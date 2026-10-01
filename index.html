@@ -1002,13 +1002,13 @@ function tree(g, x, y, s){
     for (const [bx, by, br] of blobs){ const k = col === '#4d7a2b' ? .55 : 1; g.beginPath(); g.arc(x + (bx + ox) * s, y + (by + oy) * s, br * s * k, 0, Math.PI * 2); g.fill(); }
   }
 }
-const TB = 90, FTW = 900, FTH = 420;   // forest tile drawn above and below the field
-let forestTile = null;
+const TB = 170, MT = 130, FTW = 900, FTH = 420, FOV = 80;   // forest margins: in the terrain itself, then tiles that cross-fade into it
+let forestTop = null, forestBottom = null;
 function makeTerrain(){
-  const S = 2, c = document.createElement('canvas'); c.width = W * S; c.height = (H + TB) * S;
-  const g = c.getContext('2d'); g.scale(S, S); const R = rng(1337);
+  const S = 2, c = document.createElement('canvas'); c.width = W * S; c.height = (MT + H + TB) * S;
+  const g = c.getContext('2d'); g.scale(S, S); g.translate(0, MT); const R = rng(1337);
   const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#4f6a28'); gr.addColorStop(.35, '#6c8a36'); gr.addColorStop(1, '#5f7c30');
-  g.fillStyle = gr; g.fillRect(0, 0, W, H + TB);
+  g.fillStyle = gr; g.fillRect(0, -MT, W, MT + H + TB);
   const greens = ['#7a9640','#5f7a2e','#86a04a','#58722a','#6f8c3a','#90a650'];
   for (let i = 0; i < 2600; i++){ g.globalAlpha = .1 + R() * .18; const r = 6 + R() * 34; ell(g, R() * W, R() * H, r, r * (.5 + R() * .4), greens[i % 6]); }
   for (let i = 0; i < 1500; i++){
@@ -1029,26 +1029,37 @@ function makeTerrain(){
   for (let i = 0; i < 520; i++){ g.globalAlpha = .8; g.fillStyle = fl[i % 4]; g.fillRect(R() * W, GT + R() * (H - GT), 1.5, 1.5); }
   g.globalAlpha = 1;
   for (let i = 0; i < 280; i++){ const x = R() * W, y = GT + R() * (H - GT), r = 1 + R() * 2.6; ell(g, x, y, r * 1.3, r, '#8f8a7a'); ell(g, x - r * .3, y - r * .3, r * .5, r * .4, 'rgba(255,255,255,.3)'); }
+  g.fillStyle = '#1a260e'; g.fillRect(0, -MT, W, MT);
   const fg = g.createLinearGradient(0, 0, 0, GT + 14); fg.addColorStop(0, 'rgba(26,38,14,.95)'); fg.addColorStop(1, 'rgba(26,38,14,0)');
   g.fillStyle = fg; g.fillRect(0, 0, W, GT + 14);
   const trees = [];
+  for (let y = -MT - 10; y < 14; y += 13 + R() * 8) for (let x = -20; x < W + 20; x += 15 + R() * 16) trees.push([x + R() * 6, y + R() * 6, 13 + R() * 10]);
   for (let x = -20; x < W + 20; x += 16 + R() * 20) trees.push([x, 18 + R() * 68, 12 + R() * 10]);
-  const bg = g.createLinearGradient(0, H - 16, 0, H + TB); bg.addColorStop(0, 'rgba(26,38,14,0)'); bg.addColorStop(.35, 'rgba(26,38,14,.85)'); bg.addColorStop(1, 'rgba(20,30,10,1)');
+  const bg = g.createLinearGradient(0, H - 16, 0, H + TB); bg.addColorStop(0, 'rgba(26,38,14,0)'); bg.addColorStop(.2, 'rgba(26,38,14,.85)'); bg.addColorStop(.45, 'rgba(26,38,14,1)'); bg.addColorStop(1, 'rgba(26,38,14,1)');
   g.fillStyle = bg; g.fillRect(0, H - 16, W, TB + 16);
   for (let x = -10; x < W + 10; x += 50 + R() * 70) trees.push([x, H + 4 + R() * 6, 9 + R() * 5]);
   for (let x = -20; x < W + 20; x += 14 + R() * 18) trees.push([x, H + 24 + R() * 70, 12 + R() * 10]);
+  for (let y = H + 70; y < H + TB + 34; y += 13 + R() * 8) for (let x = -20; x < W + 20; x += 15 + R() * 16) trees.push([x + R() * 6, y + R() * 6, 13 + R() * 10]);
   trees.sort((a, b) => a[1] - b[1]).forEach(t => tree(g, t[0], t[1], t[2]));
   terrain = c;
-  const ft = document.createElement('canvas'); ft.width = FTW * S; ft.height = FTH * S;
-  const f = ft.getContext('2d'); f.scale(S, S); const R2 = rng(4242);
-  const fg2 = f.createLinearGradient(0, 0, 0, FTH); fg2.addColorStop(0, '#16210c'); fg2.addColorStop(.5, '#1d2b10'); fg2.addColorStop(1, '#16210c');
-  f.fillStyle = fg2; f.fillRect(0, 0, FTW, FTH);
-  for (let i = 0; i < 500; i++){ f.globalAlpha = .08 + R2() * .12; const r = 8 + R2() * 30; ell(f, R2() * FTW, R2() * FTH, r, r * .6, R2() < .5 ? '#2a3d17' : '#121b09'); }
-  f.globalAlpha = 1;
-  const ftrees = [];
-  for (let y = 10; y < FTH + 40; y += 16 + R2() * 10) for (let x = -10; x < FTW; x += 18 + R2() * 22) ftrees.push([x + R2() * 8, y + R2() * 8, 12 + R2() * 11]);
-  ftrees.sort((a, b) => a[1] - b[1]).forEach(t => { tree(f, t[0], t[1], t[2]); tree(f, t[0] - FTW, t[1], t[2]); tree(f, t[0] + FTW, t[1], t[2]); });
-  forestTile = ft;
+  const mkForest = (seed, fadeBottom) => {
+    const ft = document.createElement('canvas'); ft.width = FTW * S; ft.height = FTH * S;
+    const f = ft.getContext('2d'); f.scale(S, S); const R2 = rng(seed);
+    f.fillStyle = '#1a260e'; f.fillRect(0, 0, FTW, FTH);
+    for (let i = 0; i < 500; i++){ f.globalAlpha = .08 + R2() * .12; const r = 8 + R2() * 30; ell(f, R2() * FTW, R2() * FTH, r, r * .6, R2() < .5 ? '#2a3d17' : '#121b09'); }
+    f.globalAlpha = 1;
+    const ft2 = [];
+    for (let y = -20; y < FTH + 40; y += 13 + R2() * 8) for (let x = -10; x < FTW; x += 15 + R2() * 16) ft2.push([x + R2() * 6, y + R2() * 6, 13 + R2() * 10]);
+    ft2.sort((p, q) => p[1] - q[1]).forEach(t => { tree(f, t[0], t[1], t[2]); tree(f, t[0] - FTW, t[1], t[2]); tree(f, t[0] + FTW, t[1], t[2]); });
+    // soft edge towards the field, so it cross-fades into the forest drawn in the terrain
+    f.globalCompositeOperation = 'destination-in';
+    const m = f.createLinearGradient(0, 0, 0, FTH);
+    if (fadeBottom){ m.addColorStop(0, '#000'); m.addColorStop(1 - FOV / FTH, '#000'); m.addColorStop(1, 'rgba(0,0,0,0)'); }
+    else { m.addColorStop(0, 'rgba(0,0,0,0)'); m.addColorStop(FOV / FTH, '#000'); m.addColorStop(1, '#000'); }
+    f.fillStyle = m; f.fillRect(0, 0, FTW, FTH); f.globalCompositeOperation = 'source-over';
+    return ft;
+  };
+  forestTop = mkForest(4242, true); forestBottom = mkForest(777, false);
 }
 
 /* Main render */
@@ -1071,8 +1082,8 @@ function render(now){
   document.body.classList.toggle('barmode', !!ab);
   VIEW = ab ? ab : { s:scale, ox:(-cam.x + shx) * scale, oy:offY + lift + shy * scale };
   ctx.setTransform(VIEW.s * dpr, 0, 0, VIEW.s * dpr, VIEW.ox * dpr, VIEW.oy * dpr);
-  if (forestTile) for (let x = 0; x < W; x += FTW){ ctx.drawImage(forestTile, x, -FTH, FTW, FTH); ctx.drawImage(forestTile, x, H + TB - 2, FTW, FTH); }
-  if (terrain) ctx.drawImage(terrain, 0, 0, W, H + TB);
+  if (terrain) ctx.drawImage(terrain, 0, -MT, W, MT + H + TB);
+  if (forestTop) for (let x = 0; x < W; x += FTW){ ctx.drawImage(forestTop, x, -MT - FTH + FOV, FTW, FTH); ctx.drawImage(forestBottom, x, H + TB - FOV, FTW, FTH); }
   for (const d of G.decals){ const a = d.t < 18 ? .35 : .35 * (1 - (d.t - 18) / 7); ell(ctx, d.x, d.y, d.r * 1.4, d.r * .6, `rgba(30,22,14,${Math.max(0, a)})`); }
   for (const c of G.corpses) drawCorpse(ctx, c);
   const list = G.bld.concat(G.units.filter(u => !u.fly)).sort((a, b) => a.y - b.y || (a.isB ? -1 : 1));
