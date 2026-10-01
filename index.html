@@ -336,7 +336,7 @@ Object.assign(UT, {
 const TYPES = ['sword','archer','catapult','barrel'], LEGENDS = ['priest','knight','wizard','dragon'];
 const AIR = new Set(['archer','wizard','dragon']);
 const METEOR = { cost:25, at:15, fall:1.4, rad:95, dmg:250 };
-const TOWER = { hp:1400, dmg:9, range:150, rate:1.1, r:26 };
+const TOWER = { hp:1400, dmg:9.9, range:150, rate:1.1, r:26 };   // arrow tower
 const CASTLE = { hp:2800, r:58 };
 const INCOME0 = 20, INCOME_STEP = 2, BONUS = 15, BATTLE = 20, SPEED = 1.15;
 
@@ -351,8 +351,8 @@ function rng(seed){ let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F
 // This avoids building oscillators and filters on every hit (which can make iOS audio stutter and crackle),
 // gives every sound a click-free fade in and out, and lets us cap how many copies of a sound overlap.
 let AC = null, OUT = null, muted = false; const lastS = {}, SND = {}, VOICES = {};
-const GAP = { fire:.18, magic:.1, heal:.2, clang:.07, twang:.09, thunk:.12, boom:.08, crumble:.3, horn:1, coin:.03, tap:.03 };
-const LIMIT = { clang:4, twang:4, thunk:3, boom:3, crumble:2, horn:1, coin:2, tap:2, fire:2, magic:3, heal:2 };
+const GAP = { towerShot:.1, fire:.18, magic:.1, heal:.2, clang:.07, twang:.09, thunk:.12, boom:.08, crumble:.3, horn:1, coin:.03, tap:.03 };
+const LIMIT = { towerShot:3, clang:4, twang:4, thunk:3, boom:3, crumble:2, horn:1, coin:2, tap:2, fire:2, magic:3, heal:2 };
 function envG(g, t, peak, a, dec){ g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(.0001, t + a + dec); g.gain.linearRampToValueAtTime(0, t + a + dec + .02); }
 function rNoise(c, out, t, dur, type, freq, peak, dec, q){
   const nb = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -365,7 +365,7 @@ function rTone(c, out, t, type, f0, f1, peak, dec, lp){
   n.connect(g); g.connect(out); o.start(t); o.stop(t + dec + .05); }
 // [length in seconds, number of variations, recipe]
 const RECIPES = {
-  clang:  [.22, 3, (c, o) => { const f = 1300 + Math.random() * 400; rNoise(c, o, 0, .1, 'bandpass', 3000, .035, .05, 5); rTone(c, o, 0, 'sine', f, f * .97, .03, .14); rTone(c, o, 0, 'sine', f * 1.62, f * 1.6, .015, .1); }],
+  clang:  [.2, 3, (c, o) => { rNoise(c, o, 0, .12, 'bandpass', 3200, .05, .08, 6); rTone(c, o, 0, 'square', 1300 + Math.random() * 500, 900, .01, .08); }],   // original sword hit
   twang:  [.22, 3, (c, o) => { rTone(c, o, 0, 'triangle', 410 + Math.random() * 50, 160, .03, .13); rNoise(c, o, 0, .08, 'bandpass', 1800, .008, .06, 1.2); }],
   thunk:  [.32, 2, (c, o) => { rTone(c, o, 0, 'sine', 140, 55, .14, .22); rNoise(c, o, 0, .16, 'lowpass', 500, .07, .12); }],
   boom:   [1.45, 2, (c, o) => { rNoise(c, o, 0, 1.4, 'lowpass', 700, .4, .95); rTone(c, o, 0, 'sine', 90, 30, .3, .6); }],
@@ -375,6 +375,7 @@ const RECIPES = {
   tap:    [.12, 1, (c, o) => rTone(c, o, 0, 'triangle', 620, 480, .04, .06)],
   fire:   [.36, 2, (c, o) => rNoise(c, o, 0, .32, 'bandpass', 900, .07, .22, .8)],
   magic:  [.4, 2, (c, o) => { rTone(c, o, 0, 'sine', 900, 300, .06, .3); rNoise(c, o, 0, .32, 'bandpass', 3000, .02, .25, 1); }],
+  towerShot: [.25, 3, (c, o) => { rTone(c, o, 0, 'triangle', 250 + Math.random() * 30, 90, .045, .1); rTone(c, o, 0, 'sine', 140, 70, .03, .07); rNoise(c, o, .012, .14, 'bandpass', 1100, .014, .1, 1.5); }],
   heal:   [.4, 1, (c, o) => { rTone(c, o, 0, 'sine', 660, 990, .03, .25); rTone(c, o, .08, 'sine', 990, 1320, .02, .2); }]
 };
 function renderAll(){
@@ -637,8 +638,9 @@ function update(dt){
         for (const e of G.units){ if (e.side === b.side || e.hp <= 0) continue; const d = edge(b, e); if (d <= TOWER.range && d < bd){ bd = d; best = e; } }
         if (best){
           const d = Math.hypot(best.x - b.x, best.y - b.y);
-          G.proj.push({ k:'arrow', src:{ side:b.side, type:'tower' }, sx:b.x, sy:b.y-62, tx:best.x, ty:aimY(best), tgt:best, t:0, dur:Math.max(.25, d/420), dmg:TOWER.dmg });
-          b.cd = TOWER.rate; b.engaged = 1.5; b.lastAtk = G.time; sfx('twang');
+          const fdx = best.x >= b.x ? 1 : -1, fx = b.x + fdx * 10, fy = b.y - 50;
+          G.proj.push({ k:'arrow', src:{ side:b.side, type:'tower' }, sx:fx, sy:fy, tx:best.x, ty:aimY(best), tgt:best, t:0, dur:Math.max(.25, d/420), dmg:TOWER.dmg });
+          b.cd = TOWER.rate; b.engaged = 1.5; b.lastAtk = G.time; sfx('towerShot');
         } else b.cd = .15;
       }
     }
@@ -808,20 +810,39 @@ function drawCastle(g, b){
   cyl(g, x - 58, y + 26, 30, 60, true); cyl(g, x + 58, y + 26, 30, 60, true);
   flag(g, x - 58, y - 38, c, dir); flag(g, x + 58, y - 38, c, dir);
 }
+const BT = {
+  body: new Path2D('M166 230V138A24 12 0 0 1 214 138V230A24 12 0 0 1 166 230Z'),
+  lines: new Path2D('M166 210A24 12 0 0 0 214 210M166 190A24 12 0 0 0 214 190M166 170A24 12 0 0 0 214 170M166 150A24 12 0 0 0 214 150'),
+  deck: new Path2D('M162 138V124A28 14 0 0 1 218 124V138A28 14 0 0 1 162 138Z'),
+  deckDark: new Path2D('M200 150V124H218V138A28 14 0 0 1 200 151Z'),
+  planks: new Path2D('M166 128V146M176 130V150M186 131V152M196 131V152M206 130V150'),
+  roof: new Path2D('M158 124L190 80L222 124A32 14 0 0 1 158 124Z'),
+  roofDark: new Path2D('M190 80L222 124A32 14 0 0 1 190 138Z')
+};
+function btWindow(g, cx, top, w, h){
+  const r = w / 2, bot = top + h;
+  g.beginPath(); g.moveTo(cx - r, bot); g.lineTo(cx - r, top + r); g.arc(cx, top + r, r, Math.PI, 0); g.lineTo(cx + r, bot); g.closePath();
+  g.fillStyle = '#1e160e'; g.fill();
+  g.strokeStyle = '#3e2814'; g.lineWidth = 1.2; g.stroke();
+  g.fillStyle = '#9a6b3e'; g.fillRect(cx - r - 1, bot, w + 2, 1.4);
+}
 function drawTower(g, b){
   const c = SIDES[b.side], dir = b.side === 0 ? 1 : -1;
   const x = b.x + (b.shake > 0 ? (Math.random() - .5) * 3 : 0), y = b.y;
   ell(g, x + 10, y + 14, 36, 12, 'rgba(0,0,0,.28)');
   if (b.dead){ drawRubble(g, b); return; }
-  cyl(g, x, y + 12, 34, 66, false);
-  g.fillStyle = '#6d4828'; g.fillRect(x - 21, y - 68, 42, 15);
-  g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = .8; g.beginPath(); for (let k = -16; k <= 16; k += 5){ g.moveTo(x + k, y - 68); g.lineTo(x + k, y - 53); } g.stroke();
-  g.fillStyle = '#8a5e36'; g.fillRect(x - 21, y - 56, 42, 3);
-  g.fillStyle = '#2a2118'; g.fillRect(x - 12, y - 64, 4, 7); g.fillRect(x - 2, y - 64, 4, 7); g.fillRect(x + 8, y - 64, 4, 7);
-  g.fillRect(x - 1.5, y - 38, 3, 9); g.fillRect(x - 10, y - 18, 2.5, 8);
-  g.fillStyle = c.col; g.beginPath(); g.moveTo(x - 25, y - 68); g.lineTo(x + 25, y - 68); g.lineTo(x, y - 102); g.closePath(); g.fill();
-  g.fillStyle = c.dark; g.beginPath(); g.moveTo(x + 6, y - 68); g.lineTo(x + 25, y - 68); g.lineTo(x, y - 102); g.closePath(); g.fill();
-  flag(g, x, y - 102, c, dir);
+  g.save(); g.translate(x, y + 12); g.scale(.72, .72); g.translate(-190, -230);
+  g.fillStyle = '#b1a78e'; g.fill(BT.body);
+  g.save(); g.clip(BT.body); g.fillStyle = '#cfc4a9'; g.fillRect(160, 130, 16, 120); g.fillStyle = '#857c67'; g.fillRect(200, 130, 20, 120); g.restore();
+  g.strokeStyle = '#7d745f'; g.lineWidth = 1; g.stroke(BT.lines);
+  g.fillStyle = '#7a5230'; g.fill(BT.deck); g.fillStyle = '#5c3c22'; g.fill(BT.deckDark);
+  g.strokeStyle = '#5c3c22'; g.lineWidth = 1; g.stroke(BT.planks);
+  g.fillStyle = c.col; g.fill(BT.roof); g.fillStyle = c.dark; g.fill(BT.roofDark);
+  btWindow(g, 170.6, 137.4, 5.2, 8.4);   // left window (seen at an angle, so a bit narrower)
+  btWindow(g, 190, 140.6, 6.6, 9.6);     // front window
+  btWindow(g, 209.4, 137.4, 5.2, 8.4);   // right window
+  g.restore();
+  flag(g, x, y - 96, c, dir);
 }
 function drawRubble(g, b){
   const castle = b.kind === 'castle';
@@ -992,23 +1013,60 @@ function drawCorpse(g, c){
 
 /* Terrain, rendered once */
 let terrain = null;
-function tree(g, x, y, s){
+/* ---------- Forest: several tree species, one continuous canvas (no seams, no fades) ---------- */
+const OAK_PAL = [['#1f3614','#34571f','#4d7a2b'], ['#22401a','#3a6224','#558a31'], ['#1c3112','#2e4d1b','#446a26'], ['#283a14','#44602a','#5f7f35']];
+function oakTree(g, x, y, s, pal){
   ell(g, x + s * .5, y + 2, s * .95, s * .35, 'rgba(0,0,0,.25)');
   g.fillStyle = '#4a3420'; g.fillRect(x - s * .12, y - s * .95, s * .24, s * .95);
   const blobs = [[0,-1.35,.8],[-.6,-1.05,.6],[.6,-1.05,.6],[0,-1.9,.62],[-.35,-1.65,.5],[.4,-1.6,.5]];
-  const layers = [['#1f3614', .12, .1], ['#34571f', 0, 0], ['#4d7a2b', -.15, -.18]];
-  for (const [col, ox, oy] of layers){
-    g.fillStyle = col;
-    for (const [bx, by, br] of blobs){ const k = col === '#4d7a2b' ? .55 : 1; g.beginPath(); g.arc(x + (bx + ox) * s, y + (by + oy) * s, br * s * k, 0, Math.PI * 2); g.fill(); }
+  const layers = [[pal[0], .12, .1, 1], [pal[1], 0, 0, 1], [pal[2], -.15, -.18, .55]];
+  for (const [col, ox, oy, k] of layers){ g.fillStyle = col;
+    for (const [bx, by, br] of blobs){ g.beginPath(); g.arc(x + (bx + ox) * s, y + (by + oy) * s, br * s * k, 0, Math.PI * 2); g.fill(); } }
+}
+function pineTree(g, x, y, s, dark){
+  ell(g, x + s * .4, y + 2, s * .7, s * .26, 'rgba(0,0,0,.25)');
+  g.fillStyle = '#3e2a19'; g.fillRect(x - s * .08, y - s * .5, s * .16, s * .5);
+  const base = dark ? ['#13281a', '#1d3a24', '#2a4f30'] : ['#17301d', '#24452a', '#355f3a'];
+  for (let k = 0; k < 4; k++){
+    const w = s * (.78 - k * .15), by = y - s * (.32 + k * .52), ty = by - s * .95;
+    g.fillStyle = base[0]; g.beginPath(); g.moveTo(x - w, by); g.lineTo(x, ty); g.lineTo(x + w, by); g.closePath(); g.fill();
+    g.fillStyle = base[1]; g.beginPath(); g.moveTo(x - w * .92, by - s * .06); g.lineTo(x, ty + s * .04); g.lineTo(x + w * .25, by - s * .06); g.closePath(); g.fill();
+    g.fillStyle = base[2]; g.beginPath(); g.moveTo(x - w * .7, by - s * .12); g.lineTo(x - w * .05, ty + s * .14); g.lineTo(x - w * .25, by - s * .12); g.closePath(); g.fill();
   }
 }
-const TB = 170, MT = 130, FTW = 900, FTH = 420, FOV = 80;   // forest margins: in the terrain itself, then tiles that cross-fade into it
-let forestTop = null, forestBottom = null;
+function birchTree(g, x, y, s){
+  ell(g, x + s * .4, y + 2, s * .65, s * .25, 'rgba(0,0,0,.22)');
+  g.fillStyle = '#e8e3d6'; g.fillRect(x - s * .07, y - s * 1.5, s * .14, s * 1.5);
+  g.fillStyle = '#2e2a24'; for (let k = .2; k < 1.4; k += .32) g.fillRect(x - s * .07, y - s * k, s * .09, s * .05);
+  const blobs = [[0,-1.75,.5],[-.35,-1.45,.4],[.35,-1.5,.4],[0,-2.1,.38],[-.2,-1.95,.32],[.25,-1.95,.3]];
+  for (const [col, ox, oy, k] of [['#4f7a2b', .08, .06, 1], ['#6a9a38', 0, 0, 1], ['#8fbf55', -.1, -.12, .5]]){ g.fillStyle = col;
+    for (const [bx, by, br] of blobs){ g.beginPath(); g.arc(x + (bx + ox) * s, y + (by + oy) * s, br * s * k, 0, Math.PI * 2); g.fill(); } }
+}
+function bushPlant(g, x, y, s){
+  ell(g, x + s * .2, y + 1, s * .8, s * .25, 'rgba(0,0,0,.22)');
+  for (const [col, k, oy] of [['#244a1a', 1, 0], ['#3a6a26', .75, -.1], ['#5a8c34', .4, -.22]]){ g.fillStyle = col;
+    for (const [bx, by, br] of [[-.45,-.35,.42],[.4,-.32,.4],[0,-.55,.5]]){ g.beginPath(); g.arc(x + bx * s, y + (by + oy) * s, br * s * k, 0, Math.PI * 2); g.fill(); } }
+}
+function drawPlant(g, t){
+  if (t.k === 'oak') oakTree(g, t.x, t.y, t.s, t.pal);
+  else if (t.k === 'pine') pineTree(g, t.x, t.y, t.s, t.dark);
+  else if (t.k === 'birch') birchTree(g, t.x, t.y, t.s);
+  else bushPlant(g, t.x, t.y, t.s);
+}
+// keep the old name working for anything else that draws a tree
+function tree(g, x, y, s){ oakTree(g, x, y, s, OAK_PAL[0]); }
+
+const TB = 440, MT = 440;   // forest above and below the field, part of the same terrain image
 function makeTerrain(){
   const S = 2, c = document.createElement('canvas'); c.width = W * S; c.height = (MT + H + TB) * S;
   const g = c.getContext('2d'); g.scale(S, S); g.translate(0, MT); const R = rng(1337);
+  // forest floor everywhere, grass field in the middle
+  g.fillStyle = '#1c2a10'; g.fillRect(0, -MT, W, MT + H + TB);
+  for (let i = 0; i < 2600; i++){ g.globalAlpha = .1 + R() * .15; const r = 8 + R() * 30, y = R() < .5 ? -MT + R() * (MT + 40) : H - 20 + R() * (TB + 20);
+    ell(g, R() * W, y, r, r * .6, R() < .5 ? '#2c4019' : '#131d0a'); }
+  g.globalAlpha = 1;
   const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#4f6a28'); gr.addColorStop(.35, '#6c8a36'); gr.addColorStop(1, '#5f7c30');
-  g.fillStyle = gr; g.fillRect(0, -MT, W, MT + H + TB);
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
   const greens = ['#7a9640','#5f7a2e','#86a04a','#58722a','#6f8c3a','#90a650'];
   for (let i = 0; i < 2600; i++){ g.globalAlpha = .1 + R() * .18; const r = 6 + R() * 34; ell(g, R() * W, R() * H, r, r * (.5 + R() * .4), greens[i % 6]); }
   for (let i = 0; i < 1500; i++){
@@ -1029,37 +1087,29 @@ function makeTerrain(){
   for (let i = 0; i < 520; i++){ g.globalAlpha = .8; g.fillStyle = fl[i % 4]; g.fillRect(R() * W, GT + R() * (H - GT), 1.5, 1.5); }
   g.globalAlpha = 1;
   for (let i = 0; i < 280; i++){ const x = R() * W, y = GT + R() * (H - GT), r = 1 + R() * 2.6; ell(g, x, y, r * 1.3, r, '#8f8a7a'); ell(g, x - r * .3, y - r * .3, r * .5, r * .4, 'rgba(255,255,255,.3)'); }
-  g.fillStyle = '#1a260e'; g.fillRect(0, -MT, W, MT);
-  const fg = g.createLinearGradient(0, 0, 0, GT + 14); fg.addColorStop(0, 'rgba(26,38,14,.95)'); fg.addColorStop(1, 'rgba(26,38,14,0)');
+  // shade of the forest canopy falling on the grass at both edges
+  const fg = g.createLinearGradient(0, 0, 0, GT + 14); fg.addColorStop(0, 'rgba(28,42,16,.95)'); fg.addColorStop(1, 'rgba(28,42,16,0)');
   g.fillStyle = fg; g.fillRect(0, 0, W, GT + 14);
-  const trees = [];
-  for (let y = -MT - 10; y < 14; y += 13 + R() * 8) for (let x = -20; x < W + 20; x += 15 + R() * 16) trees.push([x + R() * 6, y + R() * 6, 13 + R() * 10]);
-  for (let x = -20; x < W + 20; x += 16 + R() * 20) trees.push([x, 18 + R() * 68, 12 + R() * 10]);
-  const bg = g.createLinearGradient(0, H - 16, 0, H + TB); bg.addColorStop(0, 'rgba(26,38,14,0)'); bg.addColorStop(.2, 'rgba(26,38,14,.85)'); bg.addColorStop(.45, 'rgba(26,38,14,1)'); bg.addColorStop(1, 'rgba(26,38,14,1)');
-  g.fillStyle = bg; g.fillRect(0, H - 16, W, TB + 16);
-  for (let x = -10; x < W + 10; x += 50 + R() * 70) trees.push([x, H + 4 + R() * 6, 9 + R() * 5]);
-  for (let x = -20; x < W + 20; x += 14 + R() * 18) trees.push([x, H + 24 + R() * 70, 12 + R() * 10]);
-  for (let y = H + 70; y < H + TB + 34; y += 13 + R() * 8) for (let x = -20; x < W + 20; x += 15 + R() * 16) trees.push([x + R() * 6, y + R() * 6, 13 + R() * 10]);
-  trees.sort((a, b) => a[1] - b[1]).forEach(t => tree(g, t[0], t[1], t[2]));
+  const bg = g.createLinearGradient(0, H - 24, 0, H + 30); bg.addColorStop(0, 'rgba(28,42,16,0)'); bg.addColorStop(1, 'rgba(28,42,16,1)');
+  g.fillStyle = bg; g.fillRect(0, H - 24, W, 54);
+  // one list of plants for the whole forest: dense far from the field, thinning out towards it
+  const density = y => y < -10 ? 1 : y < GT - 6 ? 1 - .75 * (y + 10) / (GT + 4) : y < H - 4 ? 0 : y < H + 90 ? .25 + .75 * (y - H + 4) / 94 : 1;
+  const plants = [];
+  for (let y = -MT - 30; y < H + TB + 40; y += 12 + R() * 6){
+    const d = density(y); if (d <= 0) continue;
+    const edge = d < .7;
+    for (let x = -25; x < W + 25; x += 14 + R() * 14){
+      if (R() > d) continue;
+      const roll = R(), px = x + R() * 8, py = y + R() * 6;
+      let k;
+      if (edge) k = roll < .4 ? 'oak' : roll < .62 ? 'birch' : roll < .8 ? 'bush' : 'pine';
+      else k = roll < .46 ? 'oak' : roll < .88 ? 'pine' : roll < .97 ? 'birch' : 'bush';
+      const size = k === 'bush' ? 6 + R() * 4 : k === 'pine' ? 13 + R() * 11 : k === 'birch' ? 11 + R() * 7 : 12 + R() * 11;
+      plants.push({ k, x:px, y:py, s:size, pal:OAK_PAL[Math.floor(R() * OAK_PAL.length)], dark:R() < .5 });
+    }
+  }
+  plants.sort((a, b) => a.y - b.y).forEach(t => drawPlant(g, t));
   terrain = c;
-  const mkForest = (seed, fadeBottom) => {
-    const ft = document.createElement('canvas'); ft.width = FTW * S; ft.height = FTH * S;
-    const f = ft.getContext('2d'); f.scale(S, S); const R2 = rng(seed);
-    f.fillStyle = '#1a260e'; f.fillRect(0, 0, FTW, FTH);
-    for (let i = 0; i < 500; i++){ f.globalAlpha = .08 + R2() * .12; const r = 8 + R2() * 30; ell(f, R2() * FTW, R2() * FTH, r, r * .6, R2() < .5 ? '#2a3d17' : '#121b09'); }
-    f.globalAlpha = 1;
-    const ft2 = [];
-    for (let y = -20; y < FTH + 40; y += 13 + R2() * 8) for (let x = -10; x < FTW; x += 15 + R2() * 16) ft2.push([x + R2() * 6, y + R2() * 6, 13 + R2() * 10]);
-    ft2.sort((p, q) => p[1] - q[1]).forEach(t => { tree(f, t[0], t[1], t[2]); tree(f, t[0] - FTW, t[1], t[2]); tree(f, t[0] + FTW, t[1], t[2]); });
-    // soft edge towards the field, so it cross-fades into the forest drawn in the terrain
-    f.globalCompositeOperation = 'destination-in';
-    const m = f.createLinearGradient(0, 0, 0, FTH);
-    if (fadeBottom){ m.addColorStop(0, '#000'); m.addColorStop(1 - FOV / FTH, '#000'); m.addColorStop(1, 'rgba(0,0,0,0)'); }
-    else { m.addColorStop(0, 'rgba(0,0,0,0)'); m.addColorStop(FOV / FTH, '#000'); m.addColorStop(1, '#000'); }
-    f.fillStyle = m; f.fillRect(0, 0, FTW, FTH); f.globalCompositeOperation = 'source-over';
-    return ft;
-  };
-  forestTop = mkForest(4242, true); forestBottom = mkForest(777, false);
 }
 
 /* Main render */
@@ -1083,7 +1133,6 @@ function render(now){
   VIEW = ab ? ab : { s:scale, ox:(-cam.x + shx) * scale, oy:offY + lift + shy * scale };
   ctx.setTransform(VIEW.s * dpr, 0, 0, VIEW.s * dpr, VIEW.ox * dpr, VIEW.oy * dpr);
   if (terrain) ctx.drawImage(terrain, 0, -MT, W, MT + H + TB);
-  if (forestTop) for (let x = 0; x < W; x += FTW){ ctx.drawImage(forestTop, x, -MT - FTH + FOV, FTW, FTH); ctx.drawImage(forestBottom, x, H + TB - FOV, FTW, FTH); }
   for (const d of G.decals){ const a = d.t < 18 ? .35 : .35 * (1 - (d.t - 18) / 7); ell(ctx, d.x, d.y, d.r * 1.4, d.r * .6, `rgba(30,22,14,${Math.max(0, a)})`); }
   for (const c of G.corpses) drawCorpse(ctx, c);
   const list = G.bld.concat(G.units.filter(u => !u.fly)).sort((a, b) => a.y - b.y || (a.isB ? -1 : 1));
