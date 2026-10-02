@@ -376,7 +376,7 @@ body.battling .mid{flex-direction:column-reverse}
     <div class="bar"><span id="tl0">Tower</span><div class="track" id="tt0"><i id="t0"></i></div></div>
   </div>
   <div class="mid">
-    <div class="clocks"><div class="clock" id="roundNo">Round 1</div><div class="clock timer" id="timer">Paused</div></div>
+    <div class="clocks"><div class="clock" id="roundNo">Wave 1</div><div class="clock timer" id="timer">Paused</div></div>
     <canvas id="mini" aria-label="Map overview. Tap to look around."></canvas>
   </div>
   <div class="pside r" style="--c:#d23a2e">
@@ -406,11 +406,11 @@ body.battling .mid{flex-direction:column-reverse}
 <button id="playBtn" class="btn" aria-label="Start the battle"><span class="tri"></span>Start battle</button>
 <div id="replayBar" role="toolbar" aria-label="Replay controls">
   <button id="rpRestart" aria-label="Restart replay">⏮</button>
-  <button id="rpPrev" aria-label="Previous round">⏪</button>
+  <button id="rpPrev" aria-label="Previous wave">⏪</button>
   <button id="rpPlay" aria-label="Pause">❚❚</button>
-  <button id="rpNext" aria-label="Next round">⏩</button>
+  <button id="rpNext" aria-label="Next wave">⏩</button>
   <button id="rpSpeed" aria-label="Change speed">1×</button>
-  <span id="rpRound">Round 1</span>
+  <span id="rpRound">Wave 1</span>
   <button id="rpExit" aria-label="Exit replay">✕</button>
 </div>
 <div id="replayInfo"></div>
@@ -632,7 +632,7 @@ function destroyB(b){
   const c = SIDES[b.side];
   if (b.kind === 'tower'){
     const reward = BONUS + G.round - 1; G.bonus[b.side] += reward; if (G.stats) G.stats[b.side].towerGold += reward; if (G.stats) G.stats[1 - b.side].towerRound = G.round;
-    banner(`${c.tag} tower has fallen`, `${c.tag}'s keep is exposed. ${c.name} gets <span class="gamt">${COINS}+${reward} gold</span> next round.`, true); sfx('coin'); setTimeout(() => sfx('coin'), 140);
+    banner(`${c.tag} tower has fallen`, `${c.tag}'s keep is exposed. ${c.name} gets <span class="gamt">${COINS}+${reward} gold</span> next wave.`, true); sfx('coin'); setTimeout(() => sfx('coin'), 140);
   } else if (G.winner === null) {
     G.winner = 1 - b.side; G.phase = 'ending'; G.endT = 3.2; G.focusX = b.x;
     banner(`${c.tag} keep has fallen`, '');
@@ -1366,7 +1366,7 @@ function render(now){
   if (document.body.classList.contains('battling')){
     const hudTop = document.getElementById('hud').getBoundingClientRect().top || cssH;
     const top = (safeProbe.getBoundingClientRect().top || 0) + 2, avail = Math.max(60, hudTop - top - 4);
-    const y0 = GT - 30, y1 = GB + 18;                                  // the whole playing field, top to bottom
+    const y0 = GT - 34, y1 = GB + 6;                                   // the playing field, from the heads of the top row to the feet of the bottom row
     bs = portrait ? Math.min(cssW / 480, avail / (y1 - y0)) : Math.min(scale, avail / (y1 - y0));
     bs *= 1.2;                                                         // battle camera zoomed in 20%
     boy = top + (avail - (y1 - y0) * bs) / 2 - y0 * bs;
@@ -1464,7 +1464,7 @@ function hud(){
     e.c.style.width = (c.hp / c.max * 100) + '%'; e.t.style.width = (t.hp / t.max * 100) + '%';
     e.ct.classList.toggle('locked', !t.dead); e.tl.textContent = t.dead ? 'Fallen' : 'Tower';
   }
-  const rt = `Round ${G.round}`;
+  const rt = `Wave ${G.round}`;
   if (rt !== lastRound){ $('#roundNo').textContent = rt; lastRound = rt; }
   const tt = G.phase === 'battle' ? `${Math.ceil(G.battleT)}s` : G.phase === 'ending' || G.phase === 'over' ? 'Done' : G.phase === 'prebattle' ? 'Ready' : 'Paused';
   if (tt !== lastTimer){ const el = $('#timer'); el.textContent = tt; el.classList.toggle('low', G.phase === 'battle' && G.battleT <= 5); lastTimer = tt; }
@@ -1498,7 +1498,7 @@ const INTRO_UNITS = [
   ['catapult','Special',   'Long range, smashes crowds and buildings. Very fragile but very strong.', [['s','Incredible blast damage.'], ['w','Very fragile.']]],
   ['priest',  'Legendary', 'Heals allies. Cannot do damage.', []],
   ['knight',  'Legendary', 'Heavy armor and a sweeping sword. The safest legendary.', [['s','Strong against most units.'], ['s','Good value.']]],
-  ['wizard',  'Legendary', 'Armored battlemage whose arcane blasts hit whole groups from range.', [['s','Strong in early rounds.'], ['s','Strong against basic units.']]],
+  ['wizard',  'Legendary', 'Armored battlemage whose arcane blasts hit whole groups from range.', [['s','Strong in early waves.'], ['s','Strong against basic units.'], ['s','Good building damage.']]],
   ['dragon',  'Legendary', 'Breathes fire on everything in front of it. A late-game finisher.', [['s','Very strong foe.'], ['w','Weak against large groups of archers.']]]
 ];
 function openSheet(){
@@ -1552,12 +1552,12 @@ function startRound(){
 }
 function turnScreen(p){
   G.phase = 'turn'; G.turnP = p; const c = SIDES[p], o = SIDES[1 - p];
-  const legend = G.round === 5 ? '<p class="legnote">Legendary units are now unlocked, from this round on!</p>' : G.round > 5 ? '<p class="legnote">Legendary units can be recruited.</p>' : '';
+  const legend = G.round === 5 ? '<p class="legnote">Legendary units are now unlocked, from this wave on!</p>' : G.round > 5 ? '<p class="legnote">Legendary units can be recruited.</p>' : '';
   const lead = p === 0
     ? `${o.name}, look away while ${c.tag} chooses troops.`
     : `Hand the phone to ${c.name}. ${o.name}, no peeking.`;
   showScreen(`<div class="panel" style="--c:${c.col}">
-    <div class="rnd">Round ${G.round}</div>
+    <div class="rnd">Wave ${G.round}</div>
     <h1 style="color:${c.col}">${c.name}, your turn</h1>
     <p class="sub">${lead}</p>
     ${legend}
@@ -1594,7 +1594,7 @@ function renderShop(){
   const legendRound = G.round >= 5;
   const lg = cardsEl.querySelector('.grp.lg'), next = Math.ceil(G.round / 5) * 5 || 5;
   lg.classList.toggle('locked', !legendRound);
-  lg.querySelector('h4').textContent = legendRound ? 'Legendary' : 'Legendary: unlocks in round 5';
+  lg.querySelector('h4').textContent = legendRound ? 'Legendary' : 'Legendary: unlocks in wave 5';
   cardsEl.querySelectorAll('.card').forEach(card => {
     const t = card.dataset.t, n = G.cart.filter(x => x === t).length;
     const cnt = card.querySelector('.cnt'); cnt.textContent = n; cnt.classList.toggle('z', !n); card.querySelector('.minus').classList.toggle('z', !n);
@@ -1617,6 +1617,7 @@ function ready(){
   G.gold[p] -= cartCost(); G.spawnQ[p].push(...G.cart);
   G.roundBuys[p] = G.cart.slice();
   const left = G.gold[p]; st.savedSum += left; st.savedRounds++; st.maxSaved = Math.max(st.maxSaved, left);
+  if (!G.roundBuys[p].length) st.fullSaves = (st.fullSaves || 0) + 1;   // bought nothing this wave
   G.cart = []; closeShop();
   if (p === 0) turnScreen(1); else readyToFight();
 }
@@ -1636,22 +1637,25 @@ function statsTable(){
   const top = o => { let b = null; for (const k in o) if (!b || o[k] > o[b]) b = k; return b ? `${nm(b)} (${o[b]})` : 'None'; };
   const secs = v => { const r = Math.round(v / SPEED); return r >= 60 ? `${Math.floor(r / 60)} min ${r % 60} s` : `${r} s`; };
   const sum = o => Object.values(o).reduce((x, y) => x + y, 0);
+  const topN = o => { let b = 0; for (const k in o) b = Math.max(b, o[k]); return b; };
+  // [label, shown value, value used to decide who leads (higher leads), only show if used]
   const rows = [
-    ['Total gold spent', s => s.spent, 0],
-    ['Total gold saved between rounds', s => s.savedSum, 0],
-    ['Most gold saved at once', s => s.maxSaved, 0],
-    ['Total units bought', s => sum(s.bought), 0],
-    ['Top killer', s => top(s.killsBy), 0],
-    ['Longest surviving unit', s => s.longest ? `${UT[s.longest.type].name}, ${s.longest.rounds} round${s.longest.rounds > 1 ? 's' : ''} (${secs(s.longest.life)})` : 'None', 0],
-    ['Damage to buildings', s => Math.round(s.bldDmg), 1],
-    ['Enemy tower destroyed', s => s.towerRound ? `Round ${s.towerRound}` : 'No', 0],
-    ['Gold from fallen tower', s => s.towerGold, 0],
-    ['Health healed by priests', s => Math.round(s.healed), 1, true]
+    ['Total gold spent', s => s.spent, s => s.spent],
+    ['Total gold saved between waves', s => s.savedSum, s => s.savedSum],
+    ['Most gold saved at once', s => s.maxSaved, s => s.maxSaved],
+    ['Full saves', s => s.fullSaves || 0, s => s.fullSaves || 0],
+    ['Total units bought', s => sum(s.bought), s => sum(s.bought)],
+    ['Top killer', s => top(s.killsBy), s => topN(s.killsBy)],
+    ['Longest surviving unit', s => s.longest ? `${UT[s.longest.type].name}, ${s.longest.rounds} wave${s.longest.rounds > 1 ? 's' : ''} (${secs(s.longest.life)})` : 'None', s => s.longest ? s.longest.life : 0],
+    ['Damage to buildings', s => Math.round(s.bldDmg), s => s.bldDmg],
+    ['Enemy tower destroyed', s => s.towerRound ? `Wave ${s.towerRound}` : 'No', s => s.towerRound ? 1000 - s.towerRound : 0],
+    ['Gold from fallen tower', s => s.towerGold, s => s.towerGold],
+    ['Health healed by priests', s => Math.round(s.healed), s => s.healed, true]
   ];
-  const body = rows.map(([label, f, better, optional]) => {
-    const a = f(S[0]), b = f(S[1]);
-    if (optional && !a && !b) return '';
-    const w = better && a !== b ? ((better > 0) === (a > b) ? 0 : 1) : -1;
+  const body = rows.map(([label, f, key, optional]) => {
+    const a = f(S[0]), b = f(S[1]), ka = key(S[0]), kb = key(S[1]);
+    if (optional && !ka && !kb) return '';
+    const w = ka === kb ? -1 : ka > kb ? 0 : 1;
     return `<tr><th>${label}</th><td class="${w === 0 ? 'best' : ''}">${a}</td><td class="${w === 1 ? 'best' : ''}">${b}</td></tr>`;
   }).join('');
   return `<div class="statwrap"><table class="stats"><thead><tr><th></th><th style="color:${SIDES[0].col}">${SIDES[0].name}</th><th style="color:${SIDES[1].col}">${SIDES[1].name}</th></tr></thead><tbody>${body}</tbody></table></div>`;
@@ -1674,12 +1678,12 @@ function overScreen(){
   G.phase = 'over'; const c = SIDES[G.winner], o = SIDES[1 - G.winner];
   if (!G.livesDone){ for (const u of G.units) noteLife(u); G.livesDone = true; }
   showScreen(`<div class="panel endp">
-    <div class="rnd">Round ${G.round}</div>
+    <div class="rnd">Wave ${G.round}</div>
     <h1 style="color:${c.col}">${c.name} wins</h1>
-    <p class="sub">The ${o.tag.toLowerCase()} keep has fallen after ${G.round} round${G.round > 1 ? 's' : ''}.</p>
+    <p class="sub">The ${o.tag.toLowerCase()} keep has fallen after ${G.round} wave${G.round > 1 ? 's' : ''}.</p>
     <div class="replaycta">
       <button class="btn big" data-act="replay">▶ Watch replay</button>
-      <p>Rewatch every battle and see what each player secretly bought, round by round.</p>
+      <p>Rewatch every battle and see what each player secretly bought, wave by wave.</p>
     </div>
     <h2>Battle report</h2>
     ${statsTable()}
@@ -1814,7 +1818,7 @@ function replayNext(){
 function replayPrev(){ const R = REPLAY; replayJump(G.stepN > 120 ? R.i : R.i - 1); }   // restart this round, or go back one if it just began
 function updReplayBar(){
   const R = REPLAY; if (!R) return;
-  document.getElementById('rpRound').textContent = R.skipTo >= 0 ? 'Skipping…' : `Round ${R.log[R.i].round} of ${R.log[R.log.length - 1].round}`;
+  document.getElementById('rpRound').textContent = R.skipTo >= 0 ? 'Skipping…' : `Wave ${R.log[R.i].round} of ${R.log[R.log.length - 1].round}`;
   document.getElementById('rpPlay').textContent = R.paused ? '▶' : '❚❚';
   document.getElementById('rpPlay').setAttribute('aria-label', R.paused ? 'Play' : 'Pause');
   document.getElementById('rpSpeed').textContent = R.speed + '×';
@@ -1827,7 +1831,7 @@ function buyList(arr){
 const ORDER_ALL = ['sword','archer','barrel','catapult','priest','knight','wizard','dragon'];
 function showReveal(e){
   const el = rInfo();
-  el.innerHTML = `<div class="rv-title">Round ${e.round} purchases</div>
+  el.innerHTML = `<div class="rv-title">Wave ${e.round} purchases</div>
     <div class="rv-side" style="--c:${SIDES[0].col}"><b>${SIDES[0].tag}</b>${buyList(e.buys[0])}</div>
     <div class="rv-side" style="--c:${SIDES[1].col}"><b>${SIDES[1].tag}</b>${buyList(e.buys[1])}</div>`;
   el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
@@ -1837,7 +1841,7 @@ function replayFinished(){
   hideReveal(); rBar().classList.remove('on');
   const c = SIDES[FINAL.winner];
   showScreen(`<div class="panel"><div class="rnd">Replay finished</div><h1 style="color:${c.col}">${c.name} wins</h1>
-    <p class="sub">That was the whole battle, round by round.</p>
+    <p class="sub">That was the whole battle, wave by wave.</p>
     <div class="row"><button class="btn big" data-act="replay">Watch again</button><button class="btn ghost" data-act="results">Back to results</button></div></div>`);
 }
 function exitReplay(){
