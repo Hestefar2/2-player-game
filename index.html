@@ -368,7 +368,7 @@ body.battling .mid{flex-direction:column-reverse}
 <div id="hud">
   <div class="pside l" style="--c:#2f6fd6">
     <div class="pname"><i class="dot"></i>Player 1</div>
-    <div class="bar"><span>Castle</span><div class="track" id="ct0"><i id="c0"></i></div></div>
+    <div class="bar"><span>Keep</span><div class="track" id="ct0"><i id="c0"></i></div></div>
     <div class="bar"><span id="tl0">Tower</span><div class="track" id="tt0"><i id="t0"></i></div></div>
   </div>
   <div class="mid">
@@ -377,7 +377,7 @@ body.battling .mid{flex-direction:column-reverse}
   </div>
   <div class="pside r" style="--c:#d23a2e">
     <div class="pname">Player 2<i class="dot"></i></div>
-    <div class="bar"><span>Castle</span><div class="track" id="ct1"><i id="c1"></i></div></div>
+    <div class="bar"><span>Keep</span><div class="track" id="ct1"><i id="c1"></i></div></div>
     <div class="bar"><span id="tl1">Tower</span><div class="track" id="tt1"><i id="t1"></i></div></div>
   </div>
 </div>
@@ -437,7 +437,7 @@ Object.assign(UT, {
 });
 const TYPES = ['sword','archer','catapult','barrel'], LEGENDS = ['priest','knight','wizard','dragon'];
 const AIR = new Set(['archer','wizard','dragon']);
-const TOWER = { hp:1400, dmg:9.9, range:150, rate:1.1, r:26 };   // arrow tower
+const TOWER = { hp:1400, dmg:10, range:150, rate:1.1, r:26 };   // arrow tower
 const CASTLE = { hp:2800, r:58 };
 const INCOME0 = 20, INCOME_STEP = 2, BONUS = 15, BATTLE = 20, SPEED = 1.15;
 
@@ -628,10 +628,10 @@ function destroyB(b){
   const c = SIDES[b.side];
   if (b.kind === 'tower'){
     const reward = BONUS + G.round - 1; G.bonus[b.side] += reward; if (G.stats) G.stats[b.side].towerGold += reward; if (G.stats) G.stats[1 - b.side].towerRound = G.round;
-    banner(`${c.tag} tower has fallen`, `${c.tag}'s castle is exposed. ${c.name} gets <span class="gamt">${COINS}+${reward} gold</span> next round.`, true); sfx('coin'); setTimeout(() => sfx('coin'), 140);
+    banner(`${c.tag} tower has fallen`, `${c.tag}'s keep is exposed. ${c.name} gets <span class="gamt">${COINS}+${reward} gold</span> next round.`, true); sfx('coin'); setTimeout(() => sfx('coin'), 140);
   } else if (G.winner === null) {
     G.winner = 1 - b.side; G.phase = 'ending'; G.endT = 3.2; G.focusX = b.x;
-    banner(`${c.tag} castle has fallen`, '');
+    banner(`${c.tag} keep has fallen`, '');
   }
 }
 function attack(u, t){
@@ -1492,7 +1492,7 @@ const INTRO_UNITS = [
   ['archer',  'Basic',     'Shoots from behind your army.', [['s','Strong against knights and dragons.']]],
   ['barrel',  'Special',   'Runs into the enemy and explodes.', [['s','Strong against tight groups of swordsmen.'], ['w','Weak against ranged attacks.']]],
   ['catapult','Special',   'Long range, smashes crowds and buildings. Very fragile but very strong.', [['s','Incredible blast damage.'], ['w','Very fragile.']]],
-  ['priest',  'Legendary', 'Heals allies. Cannot do damage.', [['s','Strong in long fights next to knights.'], ['w','Ineffective in small groups.']]],
+  ['priest',  'Legendary', 'Heals allies. Cannot do damage.', []],
   ['knight',  'Legendary', 'Heavy armor and a sweeping sword. The safest legendary.', [['s','Strong against most units.'], ['s','Good value.']]],
   ['wizard',  'Legendary', 'Armored battlemage whose arcane blasts hit whole groups from range.', [['s','Strong in early rounds.'], ['s','Strong against basic units.']]],
   ['dragon',  'Legendary', 'Breathes fire on everything in front of it. A late-game finisher.', [['s','Very strong foe.'], ['w','Weak against large groups of archers.']]]
@@ -1508,7 +1508,7 @@ function openSheet(){
   };
   const units = ['sword','archer','barrel','catapult','priest','knight','wizard','dragon'].map(unitRow).join('');
   const bldg = `<tr class="bld"><th>Arrow tower</th><td>–</td><td>${TOWER.hp}</td><td>${TOWER.dmg}</td><td>–</td><td>${TOWER.rate} s</td><td>${r1(TOWER.dmg / TOWER.rate)}</td><td>${TOWER.range}</td><td>–</td><td>–</td><td>–</td></tr>
-    <tr class="bld"><th>Castle</th><td>–</td><td>${CASTLE.hp}</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>`;
+    <tr class="bld"><th>Keep</th><td>–</td><td>${CASTLE.hp}</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>`;
   const el = document.getElementById('sheet');
   el.innerHTML = `<div class="panel sheetp">
     <h1>Unit stats</h1>
@@ -1532,25 +1532,10 @@ function titleScreen(){
         <p>${what}</p>${lines.map(([k, txt]) => `<p class="${k}">${txt}</p>`).join('')}</div></div>`).join('');
   showScreen(`<div class="panel intro">
     <h1>Keep vs Keep</h1>
-    <p class="sub">A battle for two players on one phone. Buy your army in secret, pass the phone, then watch the armies clash.</p>
+    <p class="sub">A battle for two players on one phone. Each player buys units in secret, then watch the battle fold out together. Destroy the opponents Keep to win.</p>
     <div class="startrow"><button class="btn big" data-act="start">Start game</button></div>
-    <h2>How to play</h2>
-    <ol class="steps">
-      <li>Each round, Player 1 (blue, left) buys troops while Player 2 looks away. Then the phone goes to Player 2 (red, right).</li>
-      <li>Hold <b>Hold to ready</b> to confirm your army. When both are done, press <b>Start battle</b>.</li>
-      <li>The battle plays out on its own for 20 seconds, then pauses for the next round. Troops stay on the field until they fall.</li>
-      <li>You earn 20 gold in round 1, and 2 more every round. Unspent gold carries over, so you can save up.</li>
-      <li>Destroy the enemy tower to expose their castle, then destroy the castle to win. Losing your tower gives you bonus gold.</li>
-      <li>From round 5, powerful legendary units can be recruited.</li>
-    </ol>
-    <div class="unithead"><h2>Your units</h2><button class="btn ghost cardbtn statsbtn" data-sheet="1">Unit stats</button></div>
+    <div class="unithead"><h2>Units</h2><button class="btn ghost cardbtn statsbtn" data-sheet="1">Unit stats</button></div>
     <div class="ulist">${units}</div>
-    <h2>Tips</h2>
-    <ul class="tips">
-      <li>Mix your army: swordsmen in front, ranged units and siege behind.</li>
-      <li>Saving gold for round 5 often pays off, but always keep enough troops to defend.</li>
-      <li>Once your tower falls, keep some gold in reserve. Being trapped at your castle with an empty field is very hard to escape.</li>
-    </ul>
     <div class="startrow"><button class="btn big" data-act="start">Start game</button></div>
   </div>`);
   screen.querySelectorAll('canvas[data-icon]').forEach(c => iconCanvas(c, c.dataset.icon, 0));
@@ -1687,7 +1672,7 @@ function overScreen(){
   showScreen(`<div class="panel endp">
     <div class="rnd">Round ${G.round}</div>
     <h1 style="color:${c.col}">${c.name} wins</h1>
-    <p class="sub">The ${o.tag.toLowerCase()} castle has fallen after ${G.round} round${G.round > 1 ? 's' : ''}.</p>
+    <p class="sub">The ${o.tag.toLowerCase()} keep has fallen after ${G.round} round${G.round > 1 ? 's' : ''}.</p>
     <div class="replaycta">
       <button class="btn big" data-act="replay">▶ Watch replay</button>
       <p>Rewatch every battle and see what each player secretly bought, round by round.</p>
