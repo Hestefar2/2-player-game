@@ -346,7 +346,11 @@ body.battling .mid{flex-direction:column-reverse}
   padding:calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-right,0px) + 12px) calc(env(safe-area-inset-bottom,0px) + 10px) calc(env(safe-area-inset-left,0px) + 12px)}
 #sheet .statwrap{max-width:none}
 #sheet.on{display:flex}
-.sheetp{max-width:900px;text-align:left}
+.sheetp{max-width:900px;text-align:left;position:relative;padding-top:10px!important}
+.sheetp h1{margin:0 36px 8px!important;font-size:22px!important}
+.sheetx{position:absolute;top:8px;right:8px;width:32px;height:32px;border-radius:16px;border:1.5px solid var(--edge);background:rgba(255,250,235,.6);color:var(--ink);font-size:15px;font-weight:800;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;touch-action:manipulation}
+.sheetx:focus-visible{outline:3px solid #f2c14e;outline-offset:2px}
+#sheet .statwrap{margin-bottom:0}
 .sheetp h1{text-align:center}
 .sheetp h2{font-family:var(--head);font-weight:800;font-size:15px;margin:14px 0 6px}
 .sheetp .note{font-size:12px;color:var(--ink2);text-align:center;margin:0 0 8px}
@@ -1511,10 +1515,10 @@ function openSheet(){
     <tr class="bld"><th>Keep</th><td>–</td><td>${CASTLE.hp}</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>`;
   const el = document.getElementById('sheet');
   el.innerHTML = `<div class="panel sheetp">
+    <button class="sheetx" id="sheetClose" aria-label="Close">✕</button>
     <h1>Unit stats</h1>
     <div class="statwrap"><table class="ustats"><thead><tr><th>Unit</th><th>Cost</th><th>Health</th><th>Damage</th><th>Attack modifier</th><th>Attack speed</th><th>DPS</th><th>Range</th><th>Speed</th><th>Sight</th><th>Vs buildings</th></tr></thead>
       <tbody>${units}${bldg}</tbody></table></div>
-    <div class="sheetclose"><button class="btn" id="sheetClose">Close</button></div>
   </div>`;
   el.classList.add('on');
   document.getElementById('sheetClose').focus({ preventScroll:true });
