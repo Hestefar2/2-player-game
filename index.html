@@ -142,9 +142,14 @@ body.battling .mid{flex-direction:column-reverse}
 .goldbig small{font-size:13px;font-weight:700;color:var(--ink2)}
 .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 
-#ready{position:relative;overflow:hidden;-webkit-touch-callout:none;touch-action:none}
-#ready .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,215,110,.55);pointer-events:none}
-#ready.holding .fill{width:100%;transition:width .75s linear}
+#ready{position:relative;overflow:hidden;-webkit-touch-callout:none;touch-action:none;transition:transform .12s ease,filter .12s ease,box-shadow .12s ease}
+#ready .fill{position:absolute;left:0;top:0;bottom:0;width:0;pointer-events:none;
+  background:linear-gradient(90deg,rgba(255,226,140,.35),rgba(255,214,102,.75));box-shadow:2px 0 10px rgba(255,220,120,.9);transition:width .18s ease-out}
+#ready.holding{transform:scale(.96);filter:brightness(1.12);box-shadow:inset 0 -3px 0 rgba(0,0,0,.28),0 0 0 3px rgba(242,193,78,.75),0 0 16px rgba(242,193,78,.55)}
+#ready.holding .fill{width:100%;transition:width .65s linear}
+#ready.done{transform:scale(1.04);filter:brightness(1.25)}
+#ready.done .fill{width:100%;background:rgba(255,226,140,.9)}
+#ready.nope{animation:no .25s}
 #ready .lbl{position:relative}
 #playBtn{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 22%);transform:translateX(-50%);z-index:9;display:none;align-items:center;gap:12px;
   font-size:20px;padding:16px 30px 16px 24px;border-radius:40px;animation:pulse 1.6s ease-in-out infinite}
@@ -365,6 +370,20 @@ body.battling .mid{flex-direction:column-reverse}
 .specials{margin:0;padding-left:18px;font-size:12.5px;line-height:1.4}
 .specials li{margin-bottom:3px}
 .sheetclose{text-align:center;margin-top:12px}
+
+.menurow{display:flex;flex-direction:column;align-items:center;gap:10px;margin:14px 0 4px}
+.menurow .btn{width:min(260px,100%)}
+.sheetback{position:absolute;top:8px;left:8px;height:32px;border-radius:16px;border:1.5px solid var(--edge);background:rgba(255,250,235,.6);color:var(--ink);
+  font-family:var(--head);font-weight:800;font-size:12px;padding:0 12px;cursor:pointer;touch-action:manipulation}
+.unitsmenu{max-width:440px}
+.menuopt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;margin-top:10px;padding:12px 14px;border-radius:10px;cursor:pointer;touch-action:manipulation;
+  background:rgba(255,250,235,.5);border:1.5px solid var(--edge);color:var(--ink);text-align:left}
+.menuopt b{font-family:var(--head);font-size:16px}
+.menuopt span{font-size:12.5px;color:var(--ink2)}
+.menuopt:active{transform:scale(.98)}
+.sheetp .ulist{margin-top:4px}
+
+.mag{width:1em;height:1em;margin-left:.4em;vertical-align:-.14em;pointer-events:none}
 </style>
 </head>
 <body>
@@ -394,7 +413,7 @@ body.battling .mid{flex-direction:column-reverse}
       <div class="who" id="who">Player 1</div>
       <div class="goldline"><svg class="coins" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 14v3a7 2.4 0 0 0 14 0v-3" fill="#c28a22" stroke="#6f4b0c" stroke-width=".8"/><ellipse cx="10" cy="14" rx="7" ry="2.4" fill="#f6ca58" stroke="#6f4b0c" stroke-width=".8"/><path d="M3 10v3a7 2.4 0 0 0 14 0v-3" fill="#c28a22" stroke="#6f4b0c" stroke-width=".8"/><ellipse cx="10" cy="10" rx="7" ry="2.4" fill="#f6ca58" stroke="#6f4b0c" stroke-width=".8"/><path d="M3 6v3a7 2.4 0 0 0 14 0v-3" fill="#c28a22" stroke="#6f4b0c" stroke-width=".8"/><ellipse cx="10" cy="6" rx="7" ry="2.4" fill="#f6ca58" stroke="#6f4b0c" stroke-width=".8"/></svg><span id="goldLeft">25</span></div>
       <div class="hint" id="shopHint">Tap a troop to recruit it</div>
-      <button class="btn ghost cardbtn statsbtn" data-sheet="1">Unit stats</button>
+      <button class="btn ghost cardbtn statsbtn" data-units="1">Units<svg class="mag" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12.6 12.6L17 17" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
     </div>
     <div class="cards" id="cards"></div>
     <div class="shopbtns">
@@ -415,7 +434,7 @@ body.battling .mid{flex-direction:column-reverse}
   <button id="rpExit" aria-label="Exit replay">✕</button>
 </div>
 <div id="replayInfo"></div>
-<div id="sheet" role="dialog" aria-modal="true" aria-label="Unit stats"></div>
+<div id="sheet" role="dialog" aria-modal="true" aria-label="Units"></div>
 <div id="screen"></div>
 <div id="banner"></div>
 
@@ -1497,11 +1516,11 @@ function hideScreen(){ screen.classList.remove('on'); screen.innerHTML = ''; }
 const INTRO_UNITS = [
   ['sword',   'Basic',     'Holds the front line. Essential unit.', [['s','Protects your valuable units.'], ['w','Weak against splash damage.']]],
   ['archer',  'Basic',     'Shoots from behind your army.', [['s','Strong against knights and dragons.']]],
-  ['barrel',  'Special',   'Runs into the enemy and explodes.', [['s','Strong against tight groups of swordsmen.'], ['w','Weak against ranged attacks.']]],
+  ['barrel',  'Special',   'Runs into the enemy and explodes.', [['s','Strong against tight groups of swordsmen.'], ['w','Weak against ranged attacks.'], ['w','Demands careful timing.']]],
   ['catapult','Special',   'Long range, smashes crowds and buildings. Very fragile but very strong.', [['s','Incredible blast damage.'], ['w','Very fragile.']]],
   ['priest',  'Legendary', 'Heals allies. Cannot do damage.', []],
   ['knight',  'Legendary', 'Heavy armor and a sweeping sword. The safest legendary.', [['s','Strong against most units.'], ['s','Good value.']]],
-  ['wizard',  'Legendary', 'Armored battlemage whose arcane blasts hit whole groups from range.', [['s','Strong in early waves.'], ['s','Strong against basic units.'], ['s','Good building damage.']]],
+  ['wizard',  'Legendary', 'Armored battlemage whose arcane blasts hit whole groups from range.', [['s','Strong in early waves.'], ['s','Strong against basic units.'], ['s','Good building damage.'], ['w','Expensive.']]],
   ['dragon',  'Legendary', 'Breathes fire on everything in front of it. A late-game finisher.', [['s','Very strong foe.'], ['w','Weak against large groups of archers.']]]
 ];
 function openSheet(){
@@ -1518,34 +1537,55 @@ function openSheet(){
     <tr class="bld"><th>Keep</th><td>–</td><td>${CASTLE.hp}</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>`;
   const el = document.getElementById('sheet');
   el.innerHTML = `<div class="panel sheetp">
-    <button class="sheetx" id="sheetClose" aria-label="Close">✕</button>
-    <h1>Unit stats</h1>
+    ${SHEET_TOP('Stats', true)}
     <div class="statwrap"><table class="ustats"><thead><tr><th>Unit</th><th>Cost</th><th>Health</th><th>Damage</th><th>Attack modifier</th><th>Attack speed</th><th>DPS</th><th>Range</th><th>Speed</th><th>Sight</th><th>Vs buildings</th></tr></thead>
       <tbody>${units}${bldg}</tbody></table></div>
   </div>`;
   el.classList.add('on');
   document.getElementById('sheetClose').focus({ preventScroll:true });
 }
+function sheetShow(html){
+  const el = document.getElementById('sheet'); el.innerHTML = html; el.classList.add('on');
+  el.querySelectorAll('canvas[data-icon]').forEach(c => iconCanvas(c, c.dataset.icon, 0));
+  const x = document.getElementById('sheetClose'); if (x) x.focus({ preventScroll:true });
+}
+const SHEET_TOP = (title, back) => `${back ? '<button class="sheetback" data-units="1" aria-label="Back to Units">‹ Units</button>' : ''}<button class="sheetx" id="sheetClose" aria-label="Close">✕</button><h1>${title}</h1>`;
+function openUnitsMenu(){
+  sheetShow(`<div class="panel sheetp unitsmenu">${SHEET_TOP('Units', false)}
+    <button class="menuopt" data-guide="1"><b>Guide</b></button>
+    <button class="menuopt" data-sheet="1"><b>Stats</b></button>
+  </div>`);
+}
+function openGuide(){
+  const units = INTRO_UNITS.map(([t, tier, what, lines]) => `
+      <div class="uinfo${tier === 'Legendary' ? ' leg' : ''}"><canvas data-icon="${t}"></canvas><div>
+        <div><span class="nm">${UT[t].name}</span><span class="tag">${tier}, ${COINS}${UT[t].cost}</span></div>
+        <p>${what}</p>${lines.map(([k, txt]) => `<p class="${k}">${txt}</p>`).join('')}</div></div>`).join('');
+  sheetShow(`<div class="panel sheetp">${SHEET_TOP('Guide', true)}<div class="ulist">${units}</div></div>`);
+}
 function closeSheet(){ document.getElementById('sheet').classList.remove('on'); }
 document.addEventListener('click', e => {
+  if (e.target.closest('[data-units]')){ e.preventDefault(); openUnitsMenu(); return; }
+  if (e.target.closest('[data-guide]')){ e.preventDefault(); openGuide(); return; }
   if (e.target.closest('[data-sheet]')){ e.preventDefault(); openSheet(); return; }
   if (e.target.id === 'sheetClose' || e.target.id === 'sheet') closeSheet();
 });
 function titleScreen(){
   newGame(); $('#hud').classList.remove('on');
-  const units = INTRO_UNITS.map(([t, tier, what, lines]) => `
-      <div class="uinfo${tier === 'Legendary' ? ' leg' : ''}"><canvas data-icon="${t}"></canvas><div>
-        <div><span class="nm">${UT[t].name}</span><span class="tag">${tier}, ${COINS}${UT[t].cost}</span></div>
-        <p>${what}</p>${lines.map(([k, txt]) => `<p class="${k}">${txt}</p>`).join('')}</div></div>`).join('');
   showScreen(`<div class="panel intro">
     <h1>Keep vs Keep</h1>
     <p class="sub">A battle for two players on one phone. Each player buys units in secret, then watch the battle fold out together. Destroy the opponents Keep to win.</p>
-    <div class="startrow"><button class="btn big" data-act="start">Start game</button></div>
-    <div class="unithead"><h2>Units</h2><button class="btn ghost cardbtn statsbtn" data-sheet="1">Unit stats</button></div>
-    <div class="ulist">${units}</div>
-    <div class="startrow"><button class="btn big" data-act="start">Start game</button></div>
+    <h2>How to play</h2>
+    <ol class="steps">
+      <li><b>Buy in secret.</b> Each wave starts with both players buying units in turn, while the other player looks away.</li>
+      <li><b>Watch together.</b> The armies then fight on their own for 20 seconds while both players watch.</li>
+      <li><b>Repeat.</b> After each battle, a new buying phase begins for the next wave.</li>
+      <li><b>One battle, many waves.</b> The battle never resets. Surviving units stay on the field and keep fighting in the next wave.</li>
+      <li><b>Gold.</b> Income starts at 20 and grows by 2 every wave. Saved gold carries over. Knowing when to save gold is the key to winning.</li>
+      <li><b>Win.</b> Destroy the enemy's tower to expose their keep, then destroy the keep to win.</li>
+    </ol>
+    <div class="menurow"><button class="btn big cardbtn" data-units="1">Units<svg class="mag" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12.6 12.6L17 17" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button><button class="btn big" data-act="start">Start game</button></div>
   </div>`);
-  screen.querySelectorAll('canvas[data-icon]').forEach(c => iconCanvas(c, c.dataset.icon, 0));
 }
 function startRound(){
   G.round++;
@@ -1722,10 +1762,18 @@ cardsEl.addEventListener('click', e => {
 });
 cardsEl.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('card')){ e.preventDefault(); e.target.click(); } });
 (() => {
-  const rb = $('#ready'); let tm = null;
-  const cancel = () => { clearTimeout(tm); tm = null; rb.classList.remove('holding'); };
-  rb.addEventListener('pointerdown', e => { audio(); e.preventDefault(); cancel(); rb.classList.add('holding');
-    tm = setTimeout(() => { cancel(); sfx(G.shopP === 0 ? 'readyBlue' : 'readyRed'); ready(); }, 750); });
+  const rb = $('#ready'), lbl = rb.querySelector('.lbl'); let tm = null, t0 = 0;
+  const buzz = ms => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch(e){} };
+  const reset = () => { rb.classList.remove('holding', 'done'); lbl.textContent = 'Hold to ready'; };
+  const cancel = () => {
+    if (!tm) return; clearTimeout(tm); tm = null;
+    const early = performance.now() - t0 < 650; reset();
+    if (early){ rb.classList.remove('nope'); void rb.offsetWidth; rb.classList.add('nope'); }   // let go too soon: little shake
+  };
+  rb.addEventListener('pointerdown', e => { audio(); e.preventDefault(); clearTimeout(tm); reset();
+    rb.classList.add('holding'); lbl.textContent = 'Keep holding…'; t0 = performance.now(); buzz(8);
+    tm = setTimeout(() => { tm = null; rb.classList.remove('holding'); rb.classList.add('done'); lbl.textContent = 'Ready!'; buzz(25);
+      sfx(G.shopP === 0 ? 'readyBlue' : 'readyRed'); ready(); setTimeout(reset, 300); }, 650); });
   ['pointerup','pointerleave','pointercancel'].forEach(n => rb.addEventListener(n, cancel));
   rb.addEventListener('contextmenu', e => e.preventDefault());
   rb.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat){ e.preventDefault(); sfx(G.shopP === 0 ? 'readyBlue' : 'readyRed'); ready(); } });
