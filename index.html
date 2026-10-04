@@ -435,6 +435,18 @@ body:not(.kbd) :focus,body:not(.kbd) :focus-visible{outline:none!important}
 #playBtn.cardbtn{background:linear-gradient(#f4e7c6,#e3cf9c)!important;border:1.5px solid var(--edge)!important}
 
 .menurow .unitsbtn{width:min(220px,100%);font-size:15px;padding:10px 20px}
+
+.ustats thead th.nw{white-space:nowrap}
+
+#confetti{position:fixed;inset:0;z-index:8;pointer-events:none;overflow:hidden;display:none}
+#confetti.on{display:block}
+#confetti i{position:absolute;top:-20px;border-radius:2px;opacity:.95;animation-name:confall;animation-timing-function:cubic-bezier(.3,.6,.5,1);animation-fill-mode:forwards}
+@keyframes confall{0%{transform:translate(0,0) rotate(0)}100%{transform:translate(var(--dx),calc(100vh + 40px)) rotate(var(--r));opacity:.85}}
+#banner.victory .bt{color:#fff6de;text-shadow:0 0 18px rgba(255,215,114,.95),0 0 4px #000,0 3px 0 #5a3d12;animation:vglow 1.2s ease-in-out infinite alternate}
+#banner.victory .bs{font-family:var(--head);font-weight:800;font-size:18px;text-shadow:0 0 6px #000,0 2px 0 #000}
+#banner.victory .bicon .tshield{animation:vshield .6s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes vglow{from{text-shadow:0 0 10px rgba(255,215,114,.6),0 0 4px #000,0 3px 0 #5a3d12}to{text-shadow:0 0 26px rgba(255,215,114,1),0 0 4px #000,0 3px 0 #5a3d12}}
+@keyframes vshield{0%{transform:scale(.2) rotate(-25deg);opacity:0}100%{transform:scale(1) rotate(0);opacity:1}}
 </style>
 </head>
 <body>
@@ -490,6 +502,7 @@ body:not(.kbd) :focus,body:not(.kbd) :focus-visible{outline:none!important}
 <div id="sheet" role="dialog" aria-modal="true" aria-label="Units"></div>
 <div id="screen"></div>
 <div id="banner"></div>
+<div id="confetti" aria-hidden="true"></div>
 
 <script>
 (() => {
@@ -529,8 +542,8 @@ function rng(seed){ let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F
 // This avoids building oscillators and filters on every hit (which can make iOS audio stutter and crackle),
 // gives every sound a click-free fade in and out, and lets us cap how many copies of a sound overlap.
 let AC = null, OUT = null, muted = false; const lastS = {}, SND = {}, VOICES = {};
-const GAP = { d_sword:.045, d_archer:.045, d_barrel:.05, d_priest:.05, d_knight:.05, d_wizard:.05, d_catapult:.05, d_dragon:.3, open:.1, fullsave:.15, readyBlue:.3, readyRed:.3, towerShot:.1, kclang:.07, fire:.1, magic:.1, heal:.2, clang:.07, twang:.09, thunk:.12, boom:.08, crumble:.3, horn:1, coin:.03, tap:.03 };
-const LIMIT = { d_sword:3, d_archer:3, d_barrel:2, d_priest:2, d_knight:2, d_wizard:2, d_catapult:2, d_dragon:1, fullsave:2, readyBlue:1, readyRed:1, towerShot:3, clang:4, twang:4, thunk:3, boom:3, crumble:2, horn:1, coin:2, tap:2, kclang:4, fire:6, magic:3, heal:2 };
+const GAP = { victory:2, mcast:.12, d_sword:.045, d_archer:.045, d_barrel:.05, d_priest:.05, d_knight:.05, d_wizard:.05, d_catapult:.05, d_dragon:.3, open:.1, fullsave:.15, readyBlue:.3, readyRed:.3, towerShot:.1, kclang:.07, fire:.1, magic:.1, heal:.2, clang:.07, twang:.09, thunk:.12, boom:.08, crumble:.3, horn:1, coin:.03, tap:.03 };
+const LIMIT = { victory:1, mcast:2, d_sword:3, d_archer:3, d_barrel:2, d_priest:2, d_knight:2, d_wizard:2, d_catapult:2, d_dragon:1, fullsave:2, readyBlue:1, readyRed:1, towerShot:3, clang:4, twang:4, thunk:3, boom:3, crumble:2, horn:1, coin:2, tap:2, kclang:4, fire:6, magic:3, heal:2 };
 function envG(g, t, peak, a, dec){ g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(.0001, t + a + dec); g.gain.linearRampToValueAtTime(0, t + a + dec + .02); }
 function rNoise(c, out, t, dur, type, freq, peak, dec, q){
   const nb = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -621,6 +634,13 @@ const RECIPES = {
   open:   [.3, 1, (c, o) => { rTone(c, o, 0, 'triangle', 220, 165, .09, .18); rNoise(c, o, 0, .14, 'lowpass', 380, .08, .1); rTone(c, o, .01, 'sine', 110, 82, .07, .2); }],   // deep wooden thud
   kclang: [.36, 4, (c, o) => { rSweep(c, o, 0, .13, 500 + Math.random() * 150, 2600 + Math.random() * 500, 900, .055, .045, .08, 1.2); const h = .065; rTone(c, o, h, 'sine', 125, 48, .2, .14); rNoise(c, o, h, .1, 'bandpass', 850 + Math.random() * 200, .13, .08, 1.5); rNoise(c, o, h, .12, 'lowpass', 380, .12, .1); rNoise(c, o, h, .08, 'bandpass', 2800, .022, .06, 10); }],   // battleaxe: swish + heavy chop
   fire:   [.8, 4, (c, o) => { const b = verbBus(c, o); rTone(c, b, 0, 'sine', 92, 38, .18, .26); rSweep(c, b, 0, .5, 220 + Math.random() * 60, 1250 + Math.random() * 300, 320, .24, .06, .38, .9); rNoise(c, b, .02, .4, 'lowpass', 300, .12, .3); }],   // fireball whoosh with reverb
+  victory:[2.2, 1, (c, o) => { const b = verbBus(c, o);
+    const brass = (t, f, d, pk) => { rTone(c, b, t, 'sawtooth', f, f, pk, d, 1900); rTone(c, b, t + .005, 'sawtooth', f * 1.006, f * 1.006, pk * .6, d, 1700); };
+    brass(0, 220, .16, .06); brass(.15, 277.18, .16, .06); brass(.3, 329.63, .16, .065);
+    for (const [f, pk] of [[220, .06], [440, .07], [554.37, .055], [659.25, .05]]) brass(.46, f, 1.4, pk);
+    for (let i = 0; i < 3; i++) rTone(c, b, .46 + i * .11, 'sine', 95, 62, .16 - i * .03, .3);
+    rNoise(c, b, .46, 1.6, 'highpass', 5500, .045, 1.4); }],   // keep falls: victory fanfare
+  mcast:  [.3, 3, (c, o) => { rTone(c, o, 0, 'sine', 420, 980, .022, .2); rTone(c, o, .015, 'triangle', 840, 1960, .009, .18); rNoise(c, o, 0, .22, 'highpass', 4500, .006, .2); }],   // mage casting: a quiet rising shimmer
   magic:  [.65, 3, (c, o) => { const b = verbBus(c, o); rTone(c, b, 0, 'sine', 185, 40, .145, .36); rSweep(c, b, 0, .45, 320, 2300 + Math.random() * 400, 480, .09, .03, .34, 1.4); for (const [f, k] of [[880, 1], [1320, .7], [1760, .5]]) rTone(c, b, .01, 'triangle', f * (1 + Math.random() * .01), f * .94, .018 * k, .42); rNoise(c, b, 0, .3, 'highpass', 5200, .011, .26); }],   // arcane explosion
   towerShot: [.25, 3, (c, o) => { rTone(c, o, 0, 'triangle', 250 + Math.random() * 30, 90, .045, .1); rTone(c, o, 0, 'sine', 140, 70, .03, .07); rNoise(c, o, .012, .14, 'bandpass', 1100, .014, .1, 1.5); }],
   readyBlue:[.75, 1, (c, o) => { rTone(c, o, 0, 'sawtooth', 110.00, 110.00, .08, .55, 600); rTone(c, o, .02, 'sawtooth', 164.81, 164.81, .055, .55, 600); }],   // 1: A2 + E3 (root of A major)
@@ -816,16 +836,36 @@ function destroyB(b){
     const reward = BONUS + G.round; G.bonus[b.side] += reward; if (G.stats) G.stats[b.side].towerGold += reward; if (G.stats) G.stats[1 - b.side].towerRound = G.round;
     banner(`${c.tag} tower has fallen`, `${c.tag}'s keep is exposed. ${c.name} gets <span class="gamt">${COINS}+${reward} gold</span> next wave.`, true); sfx('coin'); setTimeout(() => sfx('coin'), 140);
   } else if (G.winner === null) {
-    G.winner = 1 - b.side; G.phase = 'ending'; G.endT = 3.2; G.focusX = b.x;
-    banner(`${c.tag} keep has fallen`, '', false, shieldSVG(1 - b.side, 'tsbig'));
+    G.winner = 1 - b.side; G.phase = 'ending'; G.endT = 4.5; G.focusX = b.x;
+    const w = SIDES[G.winner];
+    banner(`${c.tag} keep has fallen`, `<span style="color:${w.col}">${w.name} is victorious!</span>`, false, shieldSVG(G.winner, 'tsbig'));
+    $('#banner').classList.add('victory'); celebrate(G.winner, b.x, b.y);
   }
+}
+function celebrate(side, x, y){   // fanfare, fireworks over the fallen keep, and confetti in the winner's colours
+  sfx('victory');
+  const w = SIDES[side], cols = [w.col, w.col, '#ffd772', '#fff6de', w.dark];
+  for (let k = 0; k < 6; k++) setTimeout(() => {
+    if (!G || G.phase === 'title') return;
+    const bx = x + (Math.random() - .5) * 260, by = y - 110 - Math.random() * 90;
+    for (let i = 0; i < 34; i++){ const a = Math.random() * 6.283, sp = 70 + Math.random() * 90; G.parts.push({ k:'spark', x:bx, y:by, vx:Math.cos(a) * sp, vy:Math.sin(a) * sp * .8, g:70, life:0, max:.9 + Math.random() * .5, size:2.6, col:cols[i % cols.length] }); }
+    sfx('boom');
+  }, 450 + k * 380);
+  const box = document.getElementById('confetti'); if (!box) return; box.innerHTML = '';
+  for (let i = 0; i < 90; i++){
+    const d = document.createElement('i'), dur = 2.4 + Math.random() * 1.8;
+    d.style.cssText = `left:${Math.random() * 100}%;background:${cols[i % cols.length]};animation-duration:${dur}s;animation-delay:${Math.random() * .9}s;--dx:${(Math.random() - .5) * 160}px;--r:${(Math.random() - .5) * 1440}deg;width:${5 + Math.random() * 5}px;height:${8 + Math.random() * 6}px`;
+    box.appendChild(d);
+  }
+  box.classList.remove('on'); void box.offsetWidth; box.classList.add('on');
+  setTimeout(() => { box.classList.remove('on'); box.innerHTML = ''; }, 5200);
 }
 function attack(u, t){
   const s = UT[u.type]; u.lastAtk = G.time; SRC = { side:u.side, type:u.type, x:u.x, y:u.y };
   if (u.type === 'sword' || u.type === 'knight'){ u.swing = 1; hurt(t, s.dmg * (t.isB ? s.bld : 1)); sfx(u.type === 'knight' ? 'kclang' : 'clang');
     if (s.cleave) for (const e of G.units){ if (e !== t && e.side !== u.side && e.hp > 0 && Math.hypot(e.x - t.x, e.y - t.y) - e.r < s.cleave) hurt(e, s.dmg * s.cleaveK); } }
   else if (u.type === 'wizard'){
-    u.cast = 1; const d = Math.hypot(t.x - u.x, t.y - u.y);
+    u.cast = 1; sfx('mcast'); const d = Math.hypot(t.x - u.x, t.y - u.y);
     G.proj.push({ k:'bolt', src:SRC, sx:u.x+u.face*7, sy:u.y-31, tx:t.x, ty:aimY(t), gx:t.x, gy:t.y, tgt:t, t:0, dur:Math.max(.3, d/300), dmg:s.dmg, bld:s.bld, rad:s.splash, side:u.side });
   } else if (u.type === 'dragon'){
     const mx = u.x + u.face * 42, my = u.y - 29, ty = aimY(t);
@@ -1697,7 +1737,7 @@ function hud(){
   if (tt !== lastTimer){ const el = $('#timer'); el.textContent = tt; el.classList.toggle('low', G.phase === 'battle' && G.battleT <= 5); lastTimer = tt; }
 }
 function banner(t, s, gold, icon){
-  const b = $('#banner'); b.innerHTML = `${icon ? `<div class="bicon">${icon}</div>` : ''}<div class="bt">${t}</div>${s ? `<div class="bs">${s}</div>` : ''}`;
+  const b = $('#banner'); b.classList.remove('victory'); b.innerHTML = `${icon ? `<div class="bicon">${icon}</div>` : ''}<div class="bt">${t}</div>${s ? `<div class="bs">${s}</div>` : ''}`;
   b.classList.toggle('gold', !!gold);
   b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
 }
@@ -1746,19 +1786,23 @@ function openSheet(){
   // how much closer (in map units) a target type counts as when a unit picks what to attack; matches pickTarget
   const PRIO = { sword:['0','-40'], archer:['0','-40'], barrel:['0','+160'], catapult:['-40','+160'], priest:['–','–'], knight:['0','-40'], wizard:['0','-40'], dragon:['0','+60'] };
   const MOD = { sword:'–', archer:'–', barrel:'Blast', catapult:'Splash', priest:'Heal', knight:'Sweep', wizard:'Splash', dragon:'Splash' };
+  const SPAWN = .3, spawn100 = cost => { const v = Math.max(0, (UT.dragon.cost / cost - 1) * SPAWN); return (v === 0 ? '0' : v < 1 ? v.toFixed(2) : r1(v)) + ' s'; };   // time until a dragon's worth of gold of this unit has marched out (the first unit leaves at once)
   const unitRow = t => {
     const u = UT[t], once = t === 'barrel', dmg = t === 'priest' ? `${u.heal}x${u.targets}` : u.dmg;
     const per = t === 'priest' ? u.heal * u.targets / u.rate : u.dmg / u.rate;
     const range = once ? '–' : u.minRange ? `${u.range}-${u.minRange}` : u.range;
-    return `<tr${u.legend ? ' class="leg"' : ''}><th>${u.name}</th><td>${u.cost}</td><td>${u.hp}</td><td>${dmg}</td><td>${MOD[t]}</td><td>${once ? '–' : u.rate + ' s'}</td><td>${once ? '–' : r1(per)}</td><td>${range}</td><td>${u.speed}</td><td>${u.sight}</td><td>${u.bld ? '×' + u.bld : '–'}</td><td>${PRIO[t][0]}</td><td>${PRIO[t][1]}</td></tr>`;
+    const splash = u.splash || u.cleave || '–';
+    return `<tr${u.legend ? ' class="leg"' : ''}><th>${u.name}</th><td>${u.cost}</td><td>${spawn100(u.cost)}</td><td>${u.hp}</td><td>${u.speed}</td><td>${range}</td>`
+      + `<td>${dmg}</td><td>${once ? '–' : u.rate + ' s'}</td><td>${once ? '–' : r1(per)}</td><td>${MOD[t]}</td><td>${splash}</td><td>${u.bld ? '×' + u.bld : '–'}</td><td>${PRIO[t][0]}</td><td>${PRIO[t][1]}</td><td>${u.sight}</td></tr>`;
   };
   const units = ['sword','archer','barrel','catapult','priest','knight','wizard','dragon'].map(unitRow).join('');
-  const bldg = `<tr class="bld"><th>Arrow tower</th><td>–</td><td>${TOWER.hp}</td><td>${TOWER.dmg}</td><td>–</td><td>${TOWER.rate} s</td><td>${r1(TOWER.dmg / TOWER.rate)}</td><td>${TOWER.range}</td><td>–</td><td>–</td><td>–</td><td>0</td><td>–</td></tr>
-    <tr class="bld"><th>Keep</th><td>–</td><td>${CASTLE.hp}</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>`;
+  const dash = n => '<td>–</td>'.repeat(n);
+  const bldg = `<tr class="bld"><th>Arrow tower</th>${dash(2)}<td>${TOWER.hp}</td>${dash(1)}<td>${TOWER.range}</td><td>${TOWER.dmg}</td><td>${TOWER.rate} s</td><td>${r1(TOWER.dmg / TOWER.rate)}</td>${dash(3)}<td>0</td><td>–</td><td>–</td></tr>
+    <tr class="bld"><th>Keep</th>${dash(2)}<td>${CASTLE.hp}</td>${dash(11)}</tr>`;
   const el = document.getElementById('sheet');
   el.innerHTML = `<div class="panel sheetp">
     ${SHEET_TOP('Stats', true)}
-    <div class="statwrap"><table class="ustats"><thead><tr><th>Unit</th><th>Cost</th><th>Health</th><th>Damage</th><th>Attack modifier</th><th>Attack speed</th><th>DPS</th><th>Range</th><th>Speed</th><th>Sight</th><th>Dmg vs buildings</th><th>Unit priority</th><th>Building priority</th></tr></thead>
+    <div class="statwrap"><table class="ustats"><thead><tr><th>Unit</th><th>Cost</th><th class="nw">March&#8209;out<br>(135g)</th><th>Health</th><th>Speed</th><th>Range</th><th>Damage</th><th>Attack speed</th><th>DPS</th><th>Attack modifier</th><th>Splash radius</th><th>Dmg vs buildings</th><th>Unit priority</th><th>Building priority</th><th>Sight</tr></thead>
       <tbody>${units}${bldg}</tbody></table></div>
   </div>`;
   el.classList.add('on');
@@ -2091,7 +2135,7 @@ function replayFrame(dt){
     while (budget-- > 0 && R.skipTo >= 0){
       if (R.state !== 'battle') break;
       if (simStep()) replayAfterBattle();
-      else if (G.phase === 'ending'){ R.skipTo = -1; R.state = 'ending'; R.endT = 3; }
+      else if (G.phase === 'ending'){ R.skipTo = -1; R.state = 'ending'; R.endT = 4.5; }
     }
     G.parts.length = 0; G.fx.length = 0; updReplayBar(); return;
   }
@@ -2101,7 +2145,7 @@ function replayFrame(dt){
     simAcc += sdt; let n = 0; const cap = 6 * R.speed;
     while (simAcc >= STEP && n < cap){ simAcc -= STEP; n++;
       if (simStep()){ replayAfterBattle(); break; }
-      if (G.phase === 'ending'){ R.state = 'ending'; R.endT = 3; break; } }
+      if (G.phase === 'ending'){ R.state = 'ending'; R.endT = 4.5; break; } }
     if (n >= cap) simAcc = 0;
   }
   else if (R.state === 'ending'){ update(sdt * SPEED); R.endT -= sdt; if (R.endT <= 0){ R.state = 'done'; replayFinished(); } }
