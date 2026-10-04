@@ -432,7 +432,6 @@ body:not(.battling) .fsave{top:calc(100% + 6px);bottom:auto}
 /* focus outlines are for keyboard players only; on a touch screen they showed up as a stray yellow border */
 body:not(.kbd) :focus,body:not(.kbd) :focus-visible{outline:none!important}
 
-#playBtn.cardbtn{background:linear-gradient(#f4e7c6,#e3cf9c)!important;border:1.5px solid var(--edge)!important}
 
 .menurow .unitsbtn{width:min(220px,100%);font-size:15px;padding:10px 20px}
 
@@ -447,6 +446,45 @@ body:not(.kbd) :focus,body:not(.kbd) :focus-visible{outline:none!important}
 #banner.victory .bicon .tshield{animation:vshield .6s cubic-bezier(.2,1.6,.4,1) both}
 @keyframes vglow{from{text-shadow:0 0 10px rgba(255,215,114,.6),0 0 4px #000,0 3px 0 #5a3d12}to{text-shadow:0 0 26px rgba(255,215,114,1),0 0 4px #000,0 3px 0 #5a3d12}}
 @keyframes vshield{0%{transform:scale(.2) rotate(-25deg);opacity:0}100%{transform:scale(1) rotate(0);opacity:1}}
+
+/* "Silence": small, light and widely spaced; it slowly drifts in out of a soft blur and fades away again */
+#banner.quiet.show{animation:qbanner 3s ease-in-out forwards}
+#banner.quiet .bt{font-weight:400;font-style:italic;font-size:clamp(18px,4.6vh,28px);letter-spacing:.42em;padding-left:.42em;color:rgba(255,248,230,.88);
+  text-shadow:0 0 14px rgba(0,0,0,.35),0 1px 2px rgba(0,0,0,.4)}
+@keyframes qbanner{0%{opacity:0;filter:blur(6px);letter-spacing:.2em}35%{opacity:1;filter:blur(0)}75%{opacity:.9;filter:blur(0)}100%{opacity:0;filter:blur(3px)}}
+
+/* ===== One button style for the whole game =====
+   parchment buttons (everything neutral) and team buttons (Enter keep, Hold to ready); same shape, edge and depth everywhere */
+:root{--pbg:linear-gradient(#f7ecd0,#e5d19f)}
+.btn,.menuopt,.sheetx,.sheetback{background:var(--pbg)!important;color:var(--ink)!important;border:1.5px solid var(--edge)!important;
+  box-shadow:inset 0 -3px 0 rgba(106,74,34,.22),0 2px 5px rgba(0,0,0,.22)!important;font-family:var(--head);font-weight:800;letter-spacing:.03em}
+.btn,.menuopt,.sheetback{border-radius:9px!important}
+.btn.team{background:var(--tc)!important;color:#fff3d6!important;border-color:rgba(0,0,0,.35)!important;box-shadow:inset 0 -3px 0 rgba(0,0,0,.28),0 2px 5px rgba(0,0,0,.3)!important}
+.btn:active,.menuopt:active,.sheetx:active,.sheetback:active{filter:brightness(.93)}
+.btn.ghost{padding:8px 14px;font-size:13px}                      /* smaller secondary buttons, same look */
+#playBtn.btn{box-shadow:inset 0 -3px 0 rgba(106,74,34,.22),0 4px 14px rgba(0,0,0,.45)!important}
+.menuopt span{font-family:var(--body);font-weight:400}
+
+/* ===== Touch targets: everything you can tap is at least about 44 px, the size of a fingertip =====
+   small buttons keep their look; an invisible margin around them also counts as a tap */
+.btn{position:relative}
+.btn::after,.sheetx::after,.sheetback::after,#shopTab::after,#replayBar button::after{content:'';position:absolute;inset:-5px}
+.statsbtn{min-height:28px}
+.statsbtn::after{inset:-9px -4px}
+.sheetx::after,.sheetback::after{inset:-7px}
+#replayBar button{position:relative}
+#replayBar button::after{inset:-7px -3px}
+#shopTab::after{inset:-9px -6px}
+#ready{min-height:44px}
+.shopbtns .btn.ghost{min-height:36px}
+
+/* Start battle, once tapped: a gold flash and a quick swell that fades away (after the tap, so it can't cause a missed tap) */
+#playBtn.go{pointer-events:none;animation:pbgo .42s ease-out forwards}
+@keyframes pbgo{0%{transform:translateX(-50%) scale(1);filter:brightness(1)}
+  25%{transform:translateX(-50%) scale(1.1);filter:brightness(1.25);box-shadow:inset 0 -3px 0 rgba(106,74,34,.22),0 0 0 6px rgba(242,193,78,.55),0 0 28px rgba(242,193,78,.8)}
+  100%{transform:translateX(-50%) scale(1.22);opacity:0;filter:brightness(1.3);box-shadow:0 0 0 14px rgba(242,193,78,0),0 0 40px rgba(242,193,78,0)}}
+
+#mini{pointer-events:none!important}   /* the minimap is just a picture, not a control */
 </style>
 </head>
 <body>
@@ -461,7 +499,7 @@ body:not(.kbd) :focus,body:not(.kbd) :focus-visible{outline:none!important}
   </div>
   <div class="mid">
     <div class="clocks"><div class="clock" id="roundNo">Wave 1</div><div class="clock timer" id="timer">Paused</div></div>
-    <canvas id="mini" aria-label="Map overview. Tap to look around."></canvas>
+    <canvas id="mini" aria-label="Map overview"></canvas>
   </div>
   <div class="pside r" style="--c:#d23a2e">
     <div class="fsave" id="fs1"><span class="fsico"></span>Full save</div>
@@ -517,7 +555,7 @@ const UT = {
   sword:   { name:'Swordsman',  role:'Melee',  cost:2,  hp:70, dmg:9,  range:10,  rate:0.9, speed:55, r:8,  sight:190, bld:1,   h:30 },
   archer:  { name:'Archer',     role:'Ranged', cost:3,  hp:40, dmg:9,  range:150, rate:1.3, speed:50, r:8,  sight:210, bld:0.6, h:30 },
   catapult:{ name:'Catapult',   role:'Siege',  cost:7,  hp:95, dmg:24, range:260, minRange:55, rate:3.6, speed:30, r:14, sight:290, bld:3, splash:38, h:34 },
-  barrel:  { name:'Barrelman', role:'Blast',  cost:10, hp:50, dmg:70, range:4,   rate:0,   speed:72, r:8,  sight:230, bld:5, splash:64, h:32 }
+  barrel:  { name:'Barrelman', role:'Blast',  cost:10, hp:50, dmg:70, range:4,   rate:0,   speed:72, r:8,  sight:230, bld:4, splash:64, h:32 }
 };
 Object.assign(UT, {
   priest:{ name:'Priest', role:'Healer',  cost:20,  hp:70,   heal:18, targets:2, range:110, rate:1.0, speed:48, r:8,  sight:230, bld:0,   h:34, legend:true },
@@ -542,8 +580,8 @@ function rng(seed){ let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F
 // This avoids building oscillators and filters on every hit (which can make iOS audio stutter and crackle),
 // gives every sound a click-free fade in and out, and lets us cap how many copies of a sound overlap.
 let AC = null, OUT = null, muted = false; const lastS = {}, SND = {}, VOICES = {};
-const GAP = { victory:2, mcast:.12, d_sword:.045, d_archer:.045, d_barrel:.05, d_priest:.05, d_knight:.05, d_wizard:.05, d_catapult:.05, d_dragon:.3, open:.1, fullsave:.15, readyBlue:.3, readyRed:.3, towerShot:.1, kclang:.07, fire:.1, magic:.1, heal:.2, clang:.07, twang:.09, thunk:.12, boom:.08, crumble:.3, horn:1, coin:.03, tap:.03 };
-const LIMIT = { victory:1, mcast:2, d_sword:3, d_archer:3, d_barrel:2, d_priest:2, d_knight:2, d_wizard:2, d_catapult:2, d_dragon:1, fullsave:2, readyBlue:1, readyRed:1, towerShot:3, clang:4, twang:4, thunk:3, boom:3, crumble:2, horn:1, coin:2, tap:2, kclang:4, fire:6, magic:3, heal:2 };
+const GAP = { victory:2, mcast:.12, d_sword:.045, d_archer:.045, d_priest:.05, d_knight:.05, d_wizard:.05, d_catapult:.05, d_dragon:.3, open:.1, fullsave:.15, readyBlue:.3, readyRed:.3, towerShot:.1, kclang:.07, fire:.1, magic:.1, heal:.2, clang:.07, twang:.09, thunk:.12, boom:.08, crumble:.3, horn:1, coin:.03, tap:.03 };
+const LIMIT = { victory:1, mcast:2, d_sword:3, d_archer:3, d_priest:2, d_knight:2, d_wizard:2, d_catapult:2, d_dragon:1, fullsave:2, readyBlue:1, readyRed:1, towerShot:3, clang:4, twang:4, thunk:3, boom:3, crumble:2, horn:1, coin:2, tap:2, kclang:4, fire:6, magic:3, heal:2 };
 function envG(g, t, peak, a, dec){ g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(.0001, t + a + dec); g.gain.linearRampToValueAtTime(0, t + a + dec + .02); }
 function rNoise(c, out, t, dur, type, freq, peak, dec, q){
   const nb = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -576,10 +614,6 @@ const RECIPES = {
     rTone(c, o, 0, 'sine', 140, 70, .11, .13); rNoise(c, o, 0, .12, 'lowpass', 520, .1, .09);
     rNoise(c, o, .06, .05, 'bandpass', 1100, .07, .035, 4); rNoise(c, o, .11, .04, 'bandpass', 1500, .04, .03, 4);
     rTone(c, o, .07, 'triangle', 330, 150, .025, .2);
-  }],
-  d_barrel: [.75, 2, (c, o) => {   // shot down before reaching anyone: a hollow wooden barrel thunk and the fuse fizzling out
-    rTone(c, o, 0, 'sine', 115, 70, .14, .16); rNoise(c, o, .02, .2, 'bandpass', 380, .11, .16, 5); rNoise(c, o, .02, .14, 'bandpass', 760, .04, .1, 6);
-    rNoise(c, o, .08, .6, 'highpass', 3800, .03, .55); rTone(c, o, .1, 'sine', 900, 350, .008, .4);
   }],
   d_priest: [.75, 2, (c, o) => {   // a soft fall, then a gentle holy chime fading away
     rTone(c, o, 0, 'sine', 120, 60, .1, .14); rNoise(c, o, 0, .12, 'lowpass', 380, .07, .1);
@@ -794,19 +828,16 @@ function hurt(e, a){
     if (e.hp <= 0) return; e.hp -= a; e.engaged = 1.5;
     for (let i = 0; i < 2; i++) G.parts.push({ k:'spark', x:e.x, y:e.y-14, vx:(Math.random()-.5)*70, vy:-20-Math.random()*40, g:200, life:0, max:.3, size:1.4, col:'#ffe6a0' });
     if (e.hp <= 0){ e.hp = 0; if (src) e.killer = { type:src.type, x:src.x, y:src.y };
+      if (e.type === 'barrel' && !e.exploded){ e.chained = true; explodeBarrel(e); }
       if (st){
         if (src.side !== e.side){ st.kills++; st.killsBy[src.type] = (st.killsBy[src.type] || 0) + 1; }
       } }
   }
 }
 function blast(x, y, rad, dmg, bldMult, side, big, air, kind){
-  const from = big ? { x, y, rad, n:0 } : null, chain = [];   // Barrelman blast: remember where it went off
-  for (const e of G.units){ if (e.side === side || e.hp <= 0 || (e.fly && !air)) continue; const d = Math.hypot(e.x - x, e.y - y) - e.r; if (d < rad){ hurt(e, dmg * (1 - .5 * Math.max(0, d) / rad)); if (from && e.hp <= 0){ e.blasted = from; from.n++; if (e.type === 'barrel' && !e.exploded) chain.push(e); } if (kind === 'magic' && e.hp <= 0) e.magicFrom = { x, y, rad, n:1 }; } }
+  const from = big ? { x, y, rad, n:0 } : null;               // Barrelman blast: remember where it went off
+  for (const e of G.units){ if (e.side === side || e.hp <= 0 || (e.fly && !air)) continue; const d = Math.hypot(e.x - x, e.y - y) - e.r; if (d < rad){ hurt(e, dmg * (1 - .5 * Math.max(0, d) / rad)); if (from && e.hp <= 0){ e.blasted = from; from.n++; } if (kind === 'magic' && e.hp <= 0) e.magicFrom = { x, y, rad, n:1 }; } }
   for (const b of G.bld){ if (b.side === side || !attackable(b)) continue; const d = Math.hypot(b.x - x, b.y - y) - b.r; if (d < rad) hurt(b, dmg * bldMult); }
-  for (const e of chain){                                     // a Barrelman killed by a Barrelman blast explodes as well
-    e.exploded = true; e.chained = true; const prev = SRC; SRC = { side:e.side, type:'barrel', x:e.x, y:e.y };
-    const bs = UT.barrel; blast(e.x, e.y, bs.splash, bs.dmg, bs.bld, e.side, true); SRC = prev;
-  }
   G.fx.push({ k:'boom', x, y, t:0, dur: big ? .6 : .4, r: big ? rad : rad * .7, magic: kind === 'magic' });
   if (kind === 'magic'){ for (let i = 0; i < 12; i++){ const a = Math.random() * 6.283; G.parts.push({ k:'spark', x, y:y-8, vx:Math.cos(a)*80, vy:Math.sin(a)*50-30, g:60, life:0, max:.6, size:2, col:'#d9c2ff' }); } sfx('magic'); return; }
   G.decals.push({ x, y, r: big ? rad * .55 : rad * .35, t:0 }); if (G.decals.length > 70) G.decals.shift();
@@ -859,6 +890,11 @@ function celebrate(side, x, y){   // fanfare, fireworks over the fallen keep, an
   }
   box.classList.remove('on'); void box.offsetWidth; box.classList.add('on');
   setTimeout(() => { box.classList.remove('on'); box.innerHTML = ''; }, 5200);
+}
+function explodeBarrel(u){   // a Barrelman always goes out with a bang
+  if (u.exploded) return; u.exploded = true; u.hp = 0;
+  const prev = SRC; SRC = { side:u.side, type:'barrel', x:u.x, y:u.y };
+  const bs = UT.barrel; blast(u.x, u.y, bs.splash, bs.dmg, bs.bld, u.side, true); SRC = prev;
 }
 function attack(u, t){
   const s = UT[u.type]; u.lastAtk = G.time; SRC = { side:u.side, type:u.type, x:u.x, y:u.y };
@@ -919,6 +955,7 @@ function updUnit(u, dt){
   const s = UT[u.type];
   u.cd -= dt; u.retarget -= dt; u.swing = Math.max(0, u.swing - dt * 3.2); u.fire = Math.max(0, u.fire - dt * 1.1); u.engaged = Math.max(0, u.engaged - dt); u.cast = Math.max(0, u.cast - dt * 2);
   if (u.type === 'priest'){ updPriest(u, s, dt); return; }
+  if (u.type === 'barrel') for (const e of G.units) if (e.side !== u.side && e.hp > 0 && !e.fly && Math.hypot(e.x - u.x, e.y - u.y) < u.r + e.r + 3){ explodeBarrel(u); return; }
   if (u.retarget <= 0 || !valid(u.tgt)){ u.tgt = pickTarget(u); u.retarget = .3 + SR() * .15; }
   const t = u.tgt; u.inRange = false; u.moving = false;
   let tx, ty;
@@ -926,7 +963,7 @@ function updUnit(u, dt){
     const d = edge(u, t);
     if (d <= s.range){
       u.inRange = true; u.face = t.x >= u.x ? 1 : -1; u.engaged = 1.5; t.engaged = 1.5;
-      if (u.type === 'barrel'){ u.hp = 0; u.exploded = true; SRC = { side:u.side, type:'barrel' }; blast(u.x, u.y, s.splash, s.dmg, s.bld, u.side, true); return; }
+      if (u.type === 'barrel'){ explodeBarrel(u); return; }
       if (u.cd <= 0){ attack(u, t); u.cd = s.rate * (.9 + SR() * .2); }
       return;
     }
@@ -1636,7 +1673,7 @@ function render(now){
   BATTLE_S = bs;
   const ab = barView();
   document.body.classList.toggle('barmode', !!ab);
-  const zp = REPLAY || G.phase === 'battle' || G.phase === 'between' || G.phase === 'ending' || G.phase === 'prebattle';
+  const zp = REPLAY || G.phase === 'battle' || G.phase === 'between' || G.phase === 'ending' || G.phase === 'prebattle' || G.phase === 'quiet';
   const z = zp ? cam.zoom : 1, midY = boy + (H / 2) * bs;
   VIEW = ab ? ab : { s:bs * z, ox:(-cam.x + shx) * bs * z, oy:midY - (H / 2) * bs * z + shy * bs, vw: cssW / (bs * z) };
   ctx.setTransform(VIEW.s * dpr, 0, 0, VIEW.s * dpr, VIEW.ox * dpr, VIEW.oy * dpr);
@@ -1733,11 +1770,12 @@ function hud(){
   }
   const rt = `Wave ${G.round}`;
   if (rt !== lastRound){ $('#roundNo').textContent = rt; lastRound = rt; }
-  const tt = G.phase === 'battle' ? `${Math.ceil(G.battleT)}s` : G.phase === 'ending' || G.phase === 'over' ? 'Done' : G.phase === 'prebattle' ? 'Ready' : 'Paused';
+  const qt = REPLAY ? REPLAY.quietT : G.quietT;   // a Silence wave's clock ticks at the normal pace, starting from 20
+  const tt = G.phase === 'battle' ? `${Math.ceil(G.battleT)}s` : G.phase === 'quiet' ? `${Math.ceil(BATTLE - (QUIET_T - qt))}s` : G.phase === 'ending' || G.phase === 'over' ? 'Done' : G.phase === 'prebattle' ? 'Ready' : 'Paused';
   if (tt !== lastTimer){ const el = $('#timer'); el.textContent = tt; el.classList.toggle('low', G.phase === 'battle' && G.battleT <= 5); lastTimer = tt; }
 }
-function banner(t, s, gold, icon){
-  const b = $('#banner'); b.classList.remove('victory'); b.innerHTML = `${icon ? `<div class="bicon">${icon}</div>` : ''}<div class="bt">${t}</div>${s ? `<div class="bs">${s}</div>` : ''}`;
+function banner(t, s, gold, icon, quiet){
+  const b = $('#banner'); b.classList.remove('victory'); b.classList.toggle('quiet', !!quiet); b.innerHTML = `${icon ? `<div class="bicon">${icon}</div>` : ''}<div class="bt">${t}</div>${s ? `<div class="bs">${s}</div>` : ''}`;
   b.classList.toggle('gold', !!gold);
   b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
 }
@@ -1869,7 +1907,7 @@ function turnScreen(p){
     <div class="turnshield">${shieldSVG(p, 'tsbig')}</div>
     <h1 style="color:${c.col}">${c.tag}'s turn</h1>
     ${legend}
-    <button class="btn big" data-act="open" style="background:${p === 0 ? '#1f4fa8' : '#8a2016'};color:#fff3d6">Enter keep</button>
+    <button class="btn big team" data-act="open" style="--tc:${p === 0 ? '#1f4fa8' : '#8a2016'}">Enter keep</button>
   </div>`);
 }
 const costOf = t => UT[t].cost;
@@ -1892,7 +1930,7 @@ function openShop(p){
   setShopOpen(true);
   G.shopP = p; G.cart = []; hideScreen(); cardsEl.scrollLeft = 0; cardsEl.scrollTop = 0;
   const pcol = p === 0 ? '#1f4fa8' : '#8a2016';   // the buying player's own buttons use their team colour
-  $('#ready').style.background = pcol; $('#ready').style.color = '#fff3d6';
+  $('#ready').classList.add('team'); $('#ready').style.setProperty('--tc', pcol);
   shop.style.setProperty('--c', SIDES[p].col); $('#who').textContent = `${SIDES[p].name} (${SIDES[p].tag})`;
   cardsEl.querySelectorAll('.card').forEach(c => iconCanvas(c.querySelector('canvas'), c.dataset.t, p));
   shop.classList.add('on'); document.body.classList.add('shopping'); renderShop();
@@ -1922,7 +1960,7 @@ function setShopOpen(open){
   shop.classList.toggle('collapsed', !open); $('#shopTab').setAttribute('aria-expanded', open);
   $('#tabTxt').textContent = open ? 'Hide' : `Barracks (${G.gold[G.shopP] - cartCost()} gold)`;
 }
-function closeShop(){ rectLiveUntil = performance.now() + 500; setShopOpen(true); shop.classList.remove('on'); document.body.classList.remove('shopping'); }
+function closeShop(){ stopHoldBuy(); rectLiveUntil = performance.now() + 500; setShopOpen(true); shop.classList.remove('on'); document.body.classList.remove('shopping'); }
 function ready(){
   const p = G.shopP, st = G.stats[p]; st.spent += cartCost();
   for (const t of G.cart) st.bought[t] = (st.bought[t] || 0) + 1;
@@ -1950,10 +1988,19 @@ function showFullSaves(buys){
     void el.offsetWidth; el.classList.add('on'); sfx('fullsave');
   }, first + i * gap));
 }
+// Nothing on the field and nothing bought: the 20 s battle could not change anything, so it is played out instantly
+const isQuiet = () => !G.units.length && !G.spawnQ[0].length && !G.spawnQ[1].length;
+const QUIET_T = 5, QUIET_BANNER = 2000;   // banner after 2 s, next wave's buying after 5 s
+function runQuietWave(){ G.phase = 'battle'; G.stepN = 0; G.battleT = BATTLE; for (let i = 0; i < BATTLE_STEPS; i++) simStep(); G.parts.length = 0; G.phase = 'quiet'; }
 function startBattle(){
   showFullSaves(G.roundBuys);
-  $('#playBtn').classList.remove('on');
+  const pb = $('#playBtn'); pb.classList.add('go'); setTimeout(() => pb.classList.remove('on', 'go'), 420);   // a quick burst as the battle begins
   G.log.push({ round:G.round, buys:[G.roundBuys[0].slice(), G.roundBuys[1].slice()] }); G.roundBuys = [[],[]];
+  if (isQuiet()){                                                   // "Silence": the two Full save drums, a quiet banner, then straight on
+    G.elapsed = 0; simAcc = 0; cam.manualUntil = 0; runQuietWave(); G.quietT = QUIET_T; sfx('horn');
+    setTimeout(() => { if (G.phase === 'quiet') banner('Silence', '', false, null, true); }, QUIET_BANNER);
+    return;
+  }
   G.phase = 'battle'; G.battleT = BATTLE; G.elapsed = 0; G.stepN = 0; simAcc = 0; cam.manualUntil = 0; banner('Battle!', ''); sfx('horn');
 }
 function statsTable(){
@@ -2030,6 +2077,41 @@ screen.addEventListener('click', e => {
   else if (a === 'open') openShop(G.turnP);
   else if (a === 'title') titleScreen();
 });
+function tryBuy(card, x, y){   // buy one of this card's unit; returns false when it can't be bought
+  const t = card.dataset.t;
+  if (UT[t] && UT[t].legend && G.round < 5){ card.classList.remove('no'); void card.offsetWidth; card.classList.add('no'); return false; }
+  if (costOf(t) > G.gold[G.shopP] - cartCost()){ card.classList.remove('no'); void card.offsetWidth; card.classList.add('no'); return false; }
+  G.cart.push(t); renderShop();
+  card.classList.remove('buy'); void card.offsetWidth; card.classList.add('buy');        // gold flash
+  const f = document.createElement('span'); f.className = 'plus1'; f.textContent = '+1';   // floating "+1", from where the finger touched
+  const r = card.getBoundingClientRect(), tapped = x || y;                               // drawn above everything so it is never cut off
+  f.style.left = (tapped ? x : r.left + r.width / 2) + 'px';
+  f.style.top = (tapped ? y : r.top + r.height / 2) + 'px';
+  document.body.appendChild(f); setTimeout(() => f.remove(), 750);
+  return true;
+}
+// Tap = buy one. Hold = after a short moment, keep buying (speeding up a little) until you let go or run out of gold.
+let holdBuy = null, skipClick = false;
+function stopHoldBuy(){ if (holdBuy){ clearTimeout(holdBuy.tm); holdBuy = null; } }
+cardsEl.addEventListener('pointerdown', e => {
+  const card = e.target.closest('.card'); if (!card || e.target.closest('.minus')) return;
+  stopHoldBuy(); skipClick = false;
+  const hb = holdBuy = { card, x:e.clientX, y:e.clientY, id:e.pointerId, n:0, tm:0 };
+  const step = () => {
+    if (holdBuy !== hb) return;
+    if (!tryBuy(card, hb.x, hb.y)){ stopHoldBuy(); skipClick = true; return; }
+    hb.n++; skipClick = true;                                          // this press has already bought, so its tap doesn't buy again
+    hb.tm = setTimeout(step, Math.max(70, 150 - hb.n * 10));
+  };
+  hb.tm = setTimeout(step, 380);                                       // a normal tap is over long before this
+});
+cardsEl.addEventListener('pointermove', e => {
+  if (!holdBuy || e.pointerId !== holdBuy.id) return;
+  holdBuy.x = e.clientX; holdBuy.y = e.clientY;
+  const r = holdBuy.card.getBoundingClientRect();                      // slid off the card: stop
+  if (e.clientX < r.left - 12 || e.clientX > r.right + 12 || e.clientY < r.top - 12 || e.clientY > r.bottom + 12) stopHoldBuy();
+});
+for (const ev of ['pointerup','pointercancel']) cardsEl.addEventListener(ev, stopHoldBuy);
 cardsEl.addEventListener('click', e => {
   audio();
   const card = e.target.closest('.card'); if (!card) return; const t = card.dataset.t;
@@ -2037,16 +2119,8 @@ cardsEl.addEventListener('click', e => {
     const i = G.cart.lastIndexOf(t); if (i >= 0) G.cart.splice(i, 1);
     const m = card.querySelector('.minus'); m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop');
     renderShop(); return; }
-  if (UT[t] && UT[t].legend && G.round < 5){ card.classList.remove('no'); void card.offsetWidth; card.classList.add('no'); return; }
-  if (costOf(t) <= G.gold[G.shopP] - cartCost()){
-    G.cart.push(t); renderShop();
-    card.classList.remove('buy'); void card.offsetWidth; card.classList.add('buy');        // gold flash
-    const f = document.createElement('span'); f.className = 'plus1'; f.textContent = '+1';   // floating "+1", from where the finger touched
-    const r = card.getBoundingClientRect(), tapped = e.clientX || e.clientY;   // drawn above everything so it is never cut off
-    f.style.left = (tapped ? e.clientX : r.left + r.width / 2) + 'px';
-    f.style.top = (tapped ? e.clientY : r.top + r.height / 2) + 'px';
-    document.body.appendChild(f); setTimeout(() => f.remove(), 750); }
-  else { card.classList.remove('no'); void card.offsetWidth; card.classList.add('no'); }
+  if (skipClick){ skipClick = false; return; }
+  tryBuy(card, e.clientX, e.clientY);
 });
 cardsEl.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('card')){ e.preventDefault(); e.target.click(); } });
 (() => {
@@ -2072,17 +2146,13 @@ $('#clear').addEventListener('click', () => { G.cart = []; renderShop(); });
 
 let drag = null;
 cv.addEventListener('pointerdown', e => { audio(); drag = { id:e.pointerId, x:e.clientX, y:e.clientY, cx:cam.x, moved:false }; });
-const noPan = () => G.phase === 'title' || G.phase === 'prebattle' || G.phase === 'battle' || G.phase === 'between' || G.phase === 'ending';
+const noPan = () => G.phase === 'title' || G.phase === 'prebattle' || G.phase === 'battle' || G.phase === 'between' || G.phase === 'ending' || G.phase === 'quiet';
 cv.addEventListener('pointermove', e => { if (!drag || drag.id !== e.pointerId || noPan()) return; if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 8) drag.moved = true; if (!drag.moved) return; cam.x = drag.cx - (e.clientX - drag.x) / VIEW.s; clampCam(); cam.manualUntil = performance.now() + 3000; });
 const endDrag = () => { drag = null; };
 cv.addEventListener('pointerup', e => { if (drag && shop.classList.contains('on') && !shop.classList.contains('collapsed')) setShopOpen(false);
   endDrag(); }); cv.addEventListener('pointercancel', endDrag);
-function miniJump(e){ if (noPan()) return; const r = mini.getBoundingClientRect(); cam.x = (e.clientX - r.left) / r.width * W - viewW() / 2; clampCam(); cam.manualUntil = performance.now() + 3000; }
-let miniDown = false;
-mini.addEventListener('pointerdown', e => { miniDown = true; miniJump(e); });
-mini.addEventListener('pointermove', e => { if (miniDown) miniJump(e); });
-window.addEventListener('pointerup', () => { miniDown = false; });
 document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('touchstart', () => {}, { passive:true });   // lets iPhone show the pressed look the instant a finger lands
 document.addEventListener('keydown', e => { if (e.key === 'Tab' || e.key.startsWith('Arrow') || e.key === 'Enter' || e.key === ' ') document.body.classList.add('kbd'); }, true);
 document.addEventListener('pointerdown', () => document.body.classList.remove('kbd'), true);
 document.addEventListener('pointerdown', () => audio(), true);
@@ -2121,6 +2191,11 @@ function replayBeginRound(i){   // rounds flow straight into each other, no paus
   if (i === 0 && G.introZoom && !introAllowed(e.buys)) G.introZoom = false;
   if (i === 0 && G.introZoom) introSnap();
   if (R.skipTo >= 0 && i >= R.skipTo) R.skipTo = -1;
+  if (isQuiet()){
+    runQuietWave(); R.state = 'quiet'; R.quietT = QUIET_T;
+    if (R.skipTo < 0){ showReveal(e); showFullSaves(e.buys); sfx('horn'); setTimeout(() => { if (REPLAY && REPLAY.state === 'quiet') banner('Silence', '', false, null, true); }, QUIET_BANNER / R.speed); }
+    updReplayBar(); return;
+  }
   if (R.skipTo < 0){ showReveal(e); showFullSaves(e.buys); sfx('horn'); }
   updReplayBar();
 }
@@ -2133,6 +2208,7 @@ function replayFrame(dt){
   if (R.skipTo >= 0){                       // fast-forward without drawing every step
     let budget = 400;
     while (budget-- > 0 && R.skipTo >= 0){
+      if (R.state === 'quiet'){ replayAfterBattle(); continue; }
       if (R.state !== 'battle') break;
       if (simStep()) replayAfterBattle();
       else if (G.phase === 'ending'){ R.skipTo = -1; R.state = 'ending'; R.endT = 4.5; }
@@ -2148,6 +2224,7 @@ function replayFrame(dt){
       if (G.phase === 'ending'){ R.state = 'ending'; R.endT = 4.5; break; } }
     if (n >= cap) simAcc = 0;
   }
+  else if (R.state === 'quiet'){ R.quietT -= sdt; if (R.quietT <= 0) replayAfterBattle(); }
   else if (R.state === 'ending'){ update(sdt * SPEED); R.endT -= sdt; if (R.endT <= 0){ R.state = 'done'; replayFinished(); } }
 }
 function replayJump(idx){
@@ -2155,7 +2232,8 @@ function replayJump(idx){
   hideReveal(); newGame(R.seed); R.skipTo = idx; replayBeginRound(0);
 }
 function replayNext(){
-  const R = REPLAY; if (R.state !== 'battle') return;
+  const R = REPLAY; if (R.state === 'quiet'){ replayAfterBattle(); return; }
+  if (R.state !== 'battle') return;
   R.skipTo = R.i + 1 < R.log.length ? R.i + 1 : R.log.length;
 }
 function replayPrev(){ const R = REPLAY; replayJump(G.stepN > 120 ? R.i : R.i - 1); }   // restart this round, or go back one if it just began
@@ -2204,21 +2282,21 @@ let last = performance.now();
 let lastDraw = 0, lastBattling = null;
 function frame(now){
   requestAnimationFrame(frame);
-  const still = !REPLAY && (G.phase === 'turn' || G.phase === 'prebattle' || G.phase === 'over');   // the main menu's slowly drifting battlefield runs at full 60 fps so it glides smoothly
-  if (now - lastDraw < (still ? 1000 / 30 : 1000 / 60) - 2) return;
+  if (now - lastDraw < 1000 / 60 - 2) return;   // everything runs at a steady 60 fps (120 Hz screens draw every other refresh)
   lastDraw = now;
   const dt = Math.min(.05, (now - last) / 1000); last = now;
-  const bt = G.phase === 'battle' || G.phase === 'between' || G.phase === 'ending' || G.phase === 'prebattle';
+  const bt = G.phase === 'battle' || G.phase === 'between' || G.phase === 'ending' || G.phase === 'prebattle' || G.phase === 'quiet';
   if (bt !== lastBattling){ document.body.classList.toggle('battling', bt); lastBattling = bt; rectCache.clear(); }
   if (REPLAY){ replayFrame(dt); placeReplayBar(); }
   else if (G.phase === 'battle'){
     simAcc += dt; let n = 0;
     while (simAcc >= STEP && G.phase === 'battle' && n < 6){ simAcc -= STEP; n++;
-      if (simStep()){ G.phase = 'between'; G.betweenT = 1.1; banner('Hold!', 'The battle pauses for new orders'); } }
+      if (simStep()){ G.phase = 'between'; G.betweenT = 1.1; banner('Hold!', ''); } }
     if (n >= 6) simAcc = 0;
   }
   else if (G.phase === 'ending'){ update(dt * SPEED); G.endT -= dt; if (G.endT <= 0) overScreen(); }
   else if (G.phase === 'between'){ G.betweenT -= dt; if (G.betweenT <= 0){ G.phase = 'turn'; startRound(); } }
+  else if (G.phase === 'quiet'){ G.quietT -= dt; if (G.quietT <= 0){ G.phase = 'turn'; startRound(); } }
   else if (G.phase === 'over') stepFx(dt);
   cam.shake = Math.max(0, (cam.shake || 0) - dt); updCam(dt, now); render(now);
   if (G.phase !== 'title'){ hud(); drawMini(); }
